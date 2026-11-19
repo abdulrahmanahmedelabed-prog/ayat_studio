@@ -27,10 +27,18 @@ export function person(c, e, el, k, a) {
   const ph = e.t * (el.pose === 'thirsty' ? 5 : 7) + (el.seed || 0), sw = walking ? Math.sin(ph) : 0;
   const bob = walking ? Math.abs(Math.cos(ph)) * H * 0.025 : Math.sin(e.t * 1.6 + (el.seed || 0)) * H * 0.006;
   const pose = walking && el.pose !== 'thirsty' ? 'walk' : el.pose || 'stand';
-  c.save(); c.translate(x, gy); c.globalAlpha = a;
+  // الانفعال (يتغيّر عند moodAt) والكلام الحالي
+  const mood = el.moodAt != null && e.t >= el.moodAt ? el.mood2 || 'calm' : el.mood || 'calm';
+  const line = (el.says || []).find((q) => e.t >= q.from && e.t < q.to);
+  const talk = line ? Math.abs(Math.sin(e.t * (line.style === 'whisper' ? 9 : 13))) : 0;
+  const shake = mood === 'afraid' ? Math.sin(e.t * 47) * H * 0.008 : line?.style === 'shout' ? Math.sin(e.t * 31) * H * 0.005 : 0;
+  const hop = mood === 'happy' ? Math.abs(Math.sin(e.t * 4.5)) * H * 0.03 : mood === 'surprised' && el.moodAt != null ? Math.max(0, 1 - (e.t - el.moodAt) * 3) * H * 0.08 : 0;
+  c.save(); c.translate(x + shake, gy); c.globalAlpha = a;
   if ((el.facing ?? (el.x1 != null && el.x0 != null && el.x1 < el.x0 ? -1 : 1)) < 0) c.scale(-1, 1);
   c.fillStyle = 'rgba(0,0,0,.22)'; ell(c, 0, 0, H * 0.18, H * 0.035);
-  c.translate(0, -bob);
+  c.translate(0, -bob - hop);
+  if (mood === 'sad') c.translate(0, H * 0.015);
+  if (mood === 'angry') c.rotate(0.05);
   const hipY = -H * 0.36, legL = H * 0.34;
   // الساقان
   c.lineCap = 'round'; c.lineWidth = H * 0.075; c.strokeStyle = dim(e, L.bottom);
@@ -56,9 +64,16 @@ export function person(c, e, el, k, a) {
   else if (pose === 'sow') { arm(-1, 0.3, 0.6); const th = (Math.sin(e.t * 3) + 1) / 2; hand = arm(1, lerp(0.4, 1.8, th), -0.2);
     if (th > 0.8) { c.fillStyle = dim(e, '#e3c064'); for (let i = 0; i < 5; i++) circle(c, hand[0] + i * H * 0.05, hand[1] + i * i * H * 0.012, H * 0.012); } }
   else if (pose === 'thirsty') { arm(-1, 0.15 + sw * 0.2); arm(1, 1.9, 0.4); }
+  else if (mood === 'afraid') { arm(-1, 2.25, -1.5); arm(1, 2.25, -1.5); }
+  else if (mood === 'surprised') { arm(-1, 1.75, -0.5); arm(1, 1.75, -0.5); }
+  else if (mood === 'angry') { arm(-1, 0.55, 1.1); arm(1, 0.55, 1.1); }
+  else if (mood === 'sad') { arm(-1, 0.05); arm(1, 0.05); }
+  else if (mood === 'happy') { const w = Math.sin(e.t * 5) * 0.2; arm(-1, 2.4 + w, -0.2); arm(1, 0.3); }
+  else if (line?.style === 'whisper') { arm(-1, 0.18); arm(1, 2.1, -1.7); }
+  else if (line) { arm(-1, 0.18); arm(1, 0.9 + talk * 0.4, -0.4); }
   else { arm(-1, 0.18); arm(1, 0.18); }
   // الرأس
-  const hy = bodyTop - H * 0.15, R = H * 0.16, tilt = pose === 'lookup' || pose === 'cheer' ? -0.18 : pose === 'thirsty' ? 0.12 : 0;
+  const hy = bodyTop - H * 0.15, R = H * 0.16, tilt = mood === 'sad' ? 0.24 : mood === 'angry' ? 0.08 : pose === 'lookup' || pose === 'cheer' ? -0.18 : pose === 'thirsty' ? 0.12 : 0;
   c.save(); c.translate(0, hy); c.rotate(tilt);
   if (L.head === 'hair') { c.fillStyle = dim(e, L.hair); circle(c, -R * 0.08, -R * 0.08, R * 1.08); }
   if (L.head === 'scarf') { c.fillStyle = dim(e, L.scarf); c.beginPath(); c.ellipse(0, R * 0.05, R * 1.22, R * 1.28, 0, 0, 2 * PI); c.fill(); c.beginPath(); c.moveTo(-R * 1.1, R * 0.4); c.quadraticCurveTo(0, R * 2.1, R * 1.1, R * 0.4); c.fill(); }
@@ -79,17 +94,54 @@ export function person(c, e, el, k, a) {
     const ex = s * R * 0.38 + R * 0.1, ey = R * 0.12;
     if (blink) { c.strokeStyle = '#2a1a14'; c.lineWidth = R * 0.08; c.beginPath(); c.moveTo(ex - R * 0.16, ey); c.lineTo(ex + R * 0.16, ey); c.stroke(); continue; }
     c.fillStyle = '#ffffff'; ell(c, ex, ey, R * 0.19, R * 0.26);
-    c.fillStyle = el.eyes || '#3b2a6e'; ell(c, ex + R * 0.03, ey + look * 0.5 + R * 0.03, R * 0.15, R * 0.21);
-    c.fillStyle = '#120c1c'; ell(c, ex + R * 0.03, ey + look * 0.5 + R * 0.06, R * 0.08, R * 0.11);
+    const ps = mood === 'surprised' || mood === 'afraid' ? 0.62 : 1, ly = look * 0.5 + (mood === 'sad' ? R * 0.06 : 0);
+    c.fillStyle = el.eyes || '#3b2a6e'; ell(c, ex + R * 0.03, ey + ly + R * 0.03, R * 0.15 * ps, R * 0.21 * ps);
+    c.fillStyle = '#120c1c'; ell(c, ex + R * 0.03, ey + ly + R * 0.06, R * 0.08 * ps, R * 0.11 * ps);
     c.fillStyle = '#ffffff'; circle(c, ex - R * 0.03, ey + look * 0.5 - R * 0.07, R * 0.06); circle(c, ex + R * 0.08, ey + look * 0.5 + R * 0.1, R * 0.028);
     c.strokeStyle = '#2a1a14'; c.lineWidth = R * 0.06; c.beginPath(); c.ellipse(ex, ey, R * 0.2, R * 0.27, 0, PI * 1.15, PI * 1.85); c.stroke();
   }
+  // الحاجبان يحملان الانفعال
+  c.strokeStyle = '#2a1a14'; c.lineWidth = R * 0.07; c.lineCap = 'round';
+  for (const s of [-1, 1]) {
+    const bx = s * R * 0.38 + R * 0.1, by = -R * 0.22 - (mood === 'surprised' || mood === 'afraid' ? R * 0.12 : 0);
+    const inner = mood === 'sad' || mood === 'afraid' ? -R * 0.1 : mood === 'angry' ? R * 0.1 : 0; // الطرف الداخلي
+    c.beginPath(); c.moveTo(bx - s * R * 0.17, by + (s < 0 ? 0 : inner)); c.lineTo(bx + s * R * 0.17, by + (s < 0 ? inner : 0));
+    if (mood !== 'calm' || line) c.stroke();
+  }
+  if (mood === 'sad') { c.fillStyle = 'rgba(120,190,255,.85)'; const ty = R * (0.4 + ((e.t * 0.8) % 1) * 0.6); c.beginPath(); c.arc(-R * 0.25, ty, R * 0.06, 0, PI); c.lineTo(-R * 0.25, ty - R * 0.14); c.fill(); }
+  if (mood === 'afraid') { c.fillStyle = 'rgba(160,210,255,.9)'; c.beginPath(); c.arc(R * 0.85, -R * 0.3, R * 0.08, 0, PI); c.lineTo(R * 0.85, -R * 0.48); c.fill(); }
+  if (mood === 'angry') { c.strokeStyle = '#d9443a'; c.lineWidth = R * 0.06; for (const [dx, dy] of [[0.55, -0.85], [0.75, -0.7]]) { c.beginPath(); c.moveTo(R * dx, R * dy); c.lineTo(R * (dx + 0.12), R * (dy - 0.12)); c.stroke(); } }
   c.fillStyle = 'rgba(240,120,130,.45)'; ell(c, -R * 0.45, R * 0.45, R * 0.13, R * 0.07); ell(c, R * 0.62, R * 0.45, R * 0.13, R * 0.07);
   c.strokeStyle = '#7a3b30'; c.lineWidth = R * 0.06; c.beginPath();
+  if (line) { const big = line.style === 'shout' ? 1.5 : line.style === 'whisper' ? 0.45 : 1; c.fillStyle = '#5a2620'; ell(c, R * 0.1, R * 0.58, R * 0.13 * big, R * (0.03 + 0.13 * talk) * big); }
+  else if (mood === 'surprised' || mood === 'afraid') { c.fillStyle = '#5a2620'; ell(c, R * 0.1, R * 0.6, R * 0.08, R * 0.12); }
+  else if (mood === 'sad') { c.arc(R * 0.1, R * 0.72, R * 0.12, PI * 1.15, PI * 1.85); c.stroke(); }
+  else if (mood === 'angry') { c.moveTo(-R * 0.05, R * 0.62); c.lineTo(R * 0.25, R * 0.58); c.stroke(); }
+  else if (mood === 'happy') { c.fillStyle = '#7a3b30'; c.arc(R * 0.1, R * 0.5, R * 0.15, 0, PI); c.fill(); }
   if (pose === 'cheer') { c.fillStyle = '#7a3b30'; c.arc(R * 0.1, R * 0.55, R * 0.13, 0, PI); c.fill(); }
   else if (pose === 'thirsty') { c.arc(R * 0.1, R * 0.68, R * 0.1, PI * 1.1, PI * 1.9); c.stroke(); }
   else { c.arc(R * 0.1, R * 0.5, R * 0.1, PI * 0.15, PI * 0.85); c.stroke(); }
+  if (line?.style === 'shout') { c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = R * 0.07; for (const an of [-0.5, 0, 0.5]) { c.beginPath(); c.moveTo(R * 1.3 * Math.cos(an), R * 1.3 * Math.sin(an)); c.lineTo(R * 1.75 * Math.cos(an), R * 1.75 * Math.sin(an)); c.stroke(); } }
   c.restore(); c.restore();
+  if (line) bubble(c, e, x + shake, gy - bob - hop - H * 1.08, line, a);
+}
+
+// فقاعة الكلام: عادي، صراخ (حواف مسنّنة وخط أكبر)، همس (إطار متقطع وخط أصغر)
+function bubble(c, e, x, y, line, a) {
+  const fs = Math.max(11, e.U * (line.style === 'shout' ? 0.04 : line.style === 'whisper' ? 0.024 : 0.03));
+  c.save(); c.globalAlpha = a * Math.min(1, (e.t - line.from) * 4, (line.to - e.t) * 4);
+  c.font = `${line.style === 'whisper' ? 500 : 700} ${fs}px Tajawal, sans-serif`; c.direction = 'rtl'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  const w = Math.min(e.W * 0.6, c.measureText(line.text).width + fs * 1.4), h = fs * 1.9, bx = Math.max(w / 2 + 6, Math.min(e.W - w / 2 - 6, x)), by = Math.max(h / 2 + 6, y - h / 2);
+  c.fillStyle = line.style === 'shout' ? '#fff3c8' : line.style === 'whisper' ? 'rgba(255,255,255,.82)' : '#ffffff';
+  c.strokeStyle = line.style === 'shout' ? '#c0392b' : '#2a2a35'; c.lineWidth = Math.max(1.5, fs * 0.09);
+  c.beginPath();
+  if (line.style === 'shout') { const n = 18; for (let i = 0; i < n; i++) { const an = (i / n) * 2 * PI, r = i % 2 ? 1 : 1.18; c.lineTo(bx + Math.cos(an) * (w / 2) * r, by + Math.sin(an) * (h / 2) * r); } c.closePath(); }
+  else { c.roundRect(bx - w / 2, by - h / 2, w, h, h / 2); }
+  if (line.style === 'whisper') c.setLineDash([fs * 0.25, fs * 0.2]);
+  c.fill(); c.stroke(); c.setLineDash([]);
+  c.beginPath(); c.moveTo(x - fs * 0.3, by + h / 2 - 1); c.lineTo(x, y + h * 0.15 + fs * 0.4); c.lineTo(x + fs * 0.3, by + h / 2 - 1); c.fill();
+  c.fillStyle = line.style === 'shout' ? '#8e1e14' : line.style === 'whisper' ? '#555a66' : '#1d2230'; c.fillText(line.text, bx, by + fs * 0.06, w - fs * 0.6);
+  c.restore();
 }
 
 const ANIMALS = {

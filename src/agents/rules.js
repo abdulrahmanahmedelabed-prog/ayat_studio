@@ -25,6 +25,7 @@ export { FIGURE_TYPES };
 /** يحذف الشخصيات من المشهد إلا في درجة «متساهل». */
 export const forLevel = (scene, level) => level === 'lenient' ? scene : { ...scene, elements: scene.elements.filter((e) => !FIGURE_TYPES.includes(e.type)) };
 
+// تنبيه: نصّ الآية لا يُكتب في الرسم؛ أقوال الشخصيات مقيّدة بأربعين حرفًا وتُراجَع في المراجعة الختامية.
 export const TYPE_NAMES = {
   stars: 'نجوم', sun: 'شمس', moon: 'قمر', clouds: 'سحاب', rain: 'مطر', lightning: 'برق', wind: 'رياح', mountains: 'جبال', ground: 'أرض',
   plants: 'نبات', tree: 'شجر', grain: 'حبة وسنابل', sea: 'بحر', twoSeas: 'بحران', ship: 'سفينة', river: 'وادٍ وسيل', bees: 'نحل (نقاط) وخلية',
@@ -51,9 +52,9 @@ export function textBarriers(clean) {
 }
 
 // تنقية مشهد وارد من النموذج: قائمة بيضاء للعناصر وحدود للأرقام.
-const NUM = { from: [0, 60], to: [0, 60], until: [0, 60], x: [-0.3, 1.3], y: [0, 1], x0: [-0.5, 1.5], x1: [-0.5, 1.5], size: [0.3, 2.4], count: [1, 60], intensity: [0.1, 2], dark: [0, 1], darkTo: [0, 1], green: [0, 1], greenFrom: [-10, 60], greenTo: [-10, 60], growFrom: [-10, 60], growTo: [-10, 60], witherFrom: [0, 60], witherTo: [0, 60], fruitFrom: [-10, 60], rootsFrom: [-10, 60], swell: [0, 1], hill: [0, 1], seed: [1, 9999], storm: [0, 4], stormTo: [0, 4], layers: [2, 7], dy: [-0.3, 0.5], windFrom: [0, 60], tearFrom: [0, 60], tearTo: [0, 60], foamFadeFrom: [0, 60], foamFadeTo: [0, 60], blowFrom: [0, 60], dryFrom: [0, 60], washFrom: [0, 60], washTo: [0, 60], fadeFrom: [0, 60], fadeTo: [0, 60], uprootFrom: [0, 60], uprootTo: [0, 60], slackFrom: [0, 60], streakFrom: [-5, 60], lean: [-2, 2], facing: [-1, 1], dryTo: [0, 60], depth: [0.05, 1], barrierFrom: [0, 60], drift: [0, 3], phase: [0, 1] };
+const NUM = { from: [0, 60], to: [0, 60], until: [0, 60], x: [-0.3, 1.3], y: [0, 1], x0: [-0.5, 1.5], x1: [-0.5, 1.5], size: [0.3, 2.4], count: [1, 60], intensity: [0.1, 2], dark: [0, 1], darkTo: [0, 1], green: [0, 1], greenFrom: [-10, 60], greenTo: [-10, 60], growFrom: [-10, 60], growTo: [-10, 60], witherFrom: [0, 60], witherTo: [0, 60], fruitFrom: [-10, 60], rootsFrom: [-10, 60], swell: [0, 1], hill: [0, 1], seed: [1, 9999], storm: [0, 4], stormTo: [0, 4], layers: [2, 7], dy: [-0.3, 0.5], windFrom: [0, 60], tearFrom: [0, 60], tearTo: [0, 60], foamFadeFrom: [0, 60], foamFadeTo: [0, 60], blowFrom: [0, 60], dryFrom: [0, 60], washFrom: [0, 60], washTo: [0, 60], fadeFrom: [0, 60], fadeTo: [0, 60], uprootFrom: [0, 60], uprootTo: [0, 60], slackFrom: [0, 60], streakFrom: [-5, 60], lean: [-2, 2], facing: [-1, 1], moodAt: [0, 60], dryTo: [0, 60], depth: [0.05, 1], barrierFrom: [0, 60], drift: [0, 3], phase: [0, 1] };
 const BOOL = ['gather', 'snow', 'roots', 'fruit', 'row', 'foam', 'scatter', 'tall', 'cracks', 'streaks', 'twin', 'poor', 'graze'];
-const ENUM = { motion: ['still', 'rise', 'set', 'arc'], kind: ['grass', 'crop', 'flowers', 'broad', 'palm', 'olive', 'vine', 'grain', 'stone', 'sheep', 'cow', 'camel', 'goat'], look: ['boy', 'girl', 'man', 'woman', 'farmer'], pose: ['stand', 'walk', 'lookup', 'cheer', 'sow', 'thirsty'], mode: ['flap', 'soar', 'both'], phase: ['cycle', 'wax', 'wane'] };
+const ENUM = { motion: ['still', 'rise', 'set', 'arc'], kind: ['grass', 'crop', 'flowers', 'broad', 'palm', 'olive', 'vine', 'grain', 'stone', 'sheep', 'cow', 'camel', 'goat'], look: ['boy', 'girl', 'man', 'woman', 'farmer'], pose: ['stand', 'walk', 'lookup', 'cheer', 'sow', 'thirsty'], mood: ['calm', 'happy', 'sad', 'afraid', 'surprised', 'angry'], mood2: ['calm', 'happy', 'sad', 'afraid', 'surprised', 'angry'], mode: ['flap', 'soar', 'both'], phase: ['cycle', 'wax', 'wane'] };
 
 export function sanitizeScene(raw, strictness = 'lenient') {
   const out = { duration: clamp(+raw?.duration || 24, 10, 45), elements: [], captions: [], sky: [] };
@@ -69,6 +70,7 @@ export function sanitizeScene(raw, strictness = 'lenient') {
     for (const [k, [a, b]] of Object.entries(NUM)) if (typeof el[k] === 'number' && isFinite(el[k])) o[k] = clamp(el[k], a, b);
     for (const k of BOOL) if (typeof el[k] === 'boolean') o[k] = el[k];
     for (const [k, vs] of Object.entries(ENUM)) if (typeof el[k] === 'string' && vs.includes(el[k])) o[k] = el[k];
+    if (el.type === 'person' && Array.isArray(el.says)) o.says = el.says.slice(0, 4).filter((q) => q && typeof q.text === 'string').map((q) => ({ from: clamp(+q.from || 0, 0, 60), to: clamp(+q.to || 0, 0, 60), text: q.text.slice(0, 40), style: ['shout', 'whisper'].includes(q.style) ? q.style : 'speak' }));
     if (el.type === 'label') { o.text = String(el.text || '').slice(0, 28); if (!o.text) continue; }
     out.elements.push(o);
   }

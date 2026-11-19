@@ -540,7 +540,7 @@ LIBRARY.push(
     omitted: [],
   },
   {
-    id: 'harvest', title: 'أأنتم تزرعونه', cat: 'آيات كونية', ref: { s: 56, from: 63, to: 65 }, duration: 26, horizon: 0.6,
+    id: 'harvest', title: 'أأنتم تزرعونه', cat: 'آيات كونية', ref: { s: 56, from: 63, to: 67 }, duration: 32, horizon: 0.6,
     sky: [{ t: 0, mode: 'dawn' }, { t: 6, mode: 'day' }, { t: 16, mode: 'day' }, { t: 21, mode: 'dusk' }],
     camera: [{ t: 0, zoom: 1.4, x: 0.5, y: 0.75 }, { t: 6, zoom: 1.4, x: 0.5, y: 0.72 }, { t: 10, zoom: 1 }],
     elements: [
@@ -553,6 +553,7 @@ LIBRARY.push(
       { t: 0, text: 'الحرث الذي يُحرث ويُزرع', q: 'أفرأيتم ما تحرثون' }, { t: 5, text: 'من الذي يُنبته في الأرض ويُقرّ قراره؟', q: 'أأنتم تزرعونه أم نحن الزارعون' },
       { t: 12, text: 'الله هو الذي يُنبته' }, { t: 16, text: 'لو شاء لجعله هشيمًا لا يُنتفع به', q: 'لو نشاء لجعلناه حطاما' },
       { t: 22, text: 'فيتعجّب أصحابه مما نزل بزرعهم', q: 'فظلتم تفكهون' },
+      { t: 25.5, text: 'ويقولون: إنا لخاسرون معذَّبون', q: 'إنا لمغرمون' }, { t: 28.5, text: 'بل نحن محرومون من الرزق', q: 'بل نحن محرومون' },
     ],
     omitted: ['الزُّرّاع لا يُصوَّرون. المشهد يعرض «لو نشاء» حالًا ممكنة، لا خبرًا عن وقوعها.'],
   },
@@ -603,9 +604,9 @@ LIBRARY.push(
 // شخصيات تُضاف إلى مشاهد سابقة في درجة «متساهل» (تُحذف آليًا في الدرجات الأخرى)
 const FIG = {
   'rain-revival': [{ type: 'person', look: 'man', x: 0.4, pose: 'cheer', from: 13, seed: 1 }, { type: 'person', look: 'girl', x: 0.5, pose: 'cheer', from: 13.5, seed: 4 }, { type: 'birds', count: 6, y: 0.2, x0: -0.1, x1: 1.1, from: 21, to: 30, mode: 'both' }],
-  'winds-clouds': [{ type: 'person', look: 'farmer', x: 0.3, pose: 'stand', seed: 2, until: 14 }, { type: 'person', look: 'farmer', x: 0.3, pose: 'cheer', from: 14, seed: 2 }, { type: 'person', look: 'boy', x: 0.4, pose: 'cheer', from: 15, seed: 5 }],
-  mirage: [{ type: 'person', look: 'man', x0: 0.08, x1: 0.42, pose: 'thirsty', from: 3, to: 17, size: 0.9 }],
-  harvest: [{ type: 'person', look: 'farmer', x: 0.22, pose: 'sow', from: 0, until: 7 }],
+  'winds-clouds': [{ type: 'person', look: 'farmer', x: 0.3, pose: 'stand', seed: 2, until: 14, mood: 'calm' }, { type: 'person', look: 'farmer', x: 0.3, pose: 'cheer', from: 14, seed: 2, mood: 'happy' }, { type: 'person', look: 'boy', x: 0.4, pose: 'cheer', from: 15, seed: 5, mood: 'happy' }],
+  mirage: [{ type: 'person', look: 'man', x0: 0.08, x1: 0.42, pose: 'thirsty', from: 3, to: 17, size: 0.9, mood: 'happy', mood2: 'surprised', moodAt: 15, says: [{ from: 8, to: 11.5, text: 'ماء!', style: 'shout' }] }],
+  harvest: [{ type: 'person', look: 'farmer', x: 0.22, pose: 'sow', from: 0, until: 7 }, { type: 'person', look: 'farmer', x: 0.3, from: 17, mood: 'calm', mood2: 'surprised', moodAt: 21, says: [{ from: 25.5, to: 28.4, text: 'إنا لمغرمون', style: 'shout' }, { from: 28.6, to: 32, text: 'بل نحن محرومون' }] }, { type: 'person', look: 'man', x: 0.42, from: 17.5, mood: 'calm', mood2: 'sad', moodAt: 22, seed: 4 }],
   food: [{ type: 'person', look: 'boy', x: 0.2, pose: 'lookup', from: 18 }, { type: 'animal', kind: 'sheep', x: 0.64, graze: true, from: 29 }, { type: 'animal', kind: 'cow', x: 0.42, graze: true, from: 29.5, size: 0.95 }],
   'one-water': [{ type: 'animal', kind: 'sheep', x: 0.66, graze: true, from: 3 }, { type: 'animal', kind: 'goat', x: 0.36, graze: true, from: 3.5, size: 0.85 }],
   'two-signs': [{ type: 'person', look: 'farmer', x0: 0.05, x1: 0.55, from: 15, to: 22, seed: 3 }],

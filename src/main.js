@@ -7,6 +7,7 @@ import { Player, drawScene } from './engine/render.js';
 import { LIBRARY } from './scenes/library.js';
 import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel } from './agents/rules.js';
 import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
+import { Sfx } from './sfx.js';
 import { APP_VERSION, autoCheck, checkUpdate, platform, skip } from './update.js';
 import { runOffline } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
@@ -43,6 +44,7 @@ async function ayat(ref) {
 
 const level = () => (STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS);
 const reciteOn = () => store.get('recite', '1') === '1';
+const sfxOn = () => store.get('sfx', '1') === '1';
 const reciter = () => (RECITERS[store.get('reciter')] ? store.get('reciter') : DEFAULT_RECITER);
 
 // ───────── الترجمات (QuranEnc، نصّ غير معدَّل) ─────────
@@ -130,8 +132,10 @@ function playerView({ title, scene, A, report, ref, favId }) {
     playBtn.dataset.state = pl.playing ? 'pause' : t >= scene.duration - 0.05 ? 'replay' : 'play';
     playBtn.setAttribute('aria-label', pl.playing ? 'إيقاف مؤقت' : 'تشغيل');
     let c = null; for (const x of scene.captions) if (x.t <= t) c = x;
+    sfx?.update(scene, t);
     if (c !== lastCap) { lastCap = c; cap.textContent = c ? c.text : ''; cap.classList.remove('in'); void cap.offsetWidth; if (c) cap.classList.add('in'); verse.mark(c?.q); }
   });
+  const sfx = sfxOn() ? new Sfx() : null;
   // التلاوة: حين تعمل تقود زمن المشهد، فيمتد المشهد على طول التلاوة
   const status = h('p', { class: 'note audio-status', role: 'status' });
   const rc = ref && reciteOn() ? new Recitation(ref, reciter()) : null;
@@ -145,11 +149,11 @@ function playerView({ title, scene, A, report, ref, favId }) {
   function blocked() { p.pause(); status.textContent = 'اضغط زر التشغيل لسماع التلاوة مع المشهد.'; }
   p.clock = () => (rc && audioOk && rc.total && rc.playing ? rc.progress * scene.duration : null);
   p.hooks = {
-    play: (t) => { if (rc && audioOk && rc.total) { rc.seekFrac(t / scene.duration); rc.play().catch(blocked); } },
-    pause: () => rc?.pause(),
+    play: (t) => { sfx?.start(); sfx?.duck(!!(rc && audioOk)); if (rc && audioOk && rc.total) { rc.seekFrac(t / scene.duration); rc.play().catch(blocked); } },
+    pause: () => { rc?.pause(); sfx?.stop(); },
     seek: (t) => { if (rc && audioOk && rc.total) rc.seekFrac(t / scene.duration); },
   };
-  p.cleanup = () => rc?.destroy();
+  p.cleanup = () => { rc?.destroy(); sfx?.stop(); sfx?.ctx?.close(); };
   bar.addEventListener('input', () => p.seek(+bar.value));
   playBtn.addEventListener('click', () => p.toggle());
   const speed = h('button', { class: 'ghost', onclick: () => { p.speed = p.speed === 1 ? 0.5 : 1; rc?.setRate(p.speed); speed.textContent = p.speed === 1 ? 'سرعة ×١' : 'سرعة ×½'; } }, 'سرعة ×١');
@@ -336,6 +340,7 @@ function pageAbout() {
     h('section', { class: 'panel' }, h('h3', {}, 'التلاوة'),
       h('p', {}, 'تُسمع الآية مرتّلة مع المشهد، ويمتد المشهد على طول التلاوة، وتدخل التلاوة في الفيديو المحفوظ. تحتاج اتصالًا بالإنترنت لأن ملفات الصوت تُبثّ ولا تُخزَّن في التطبيق.'),
       h('div', { class: 'form' },
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 'sfx', checked: sfxOn(), onchange: (ev) => { store.set('sfx', ev.target.checked ? '1' : '0'); rcMsg.textContent = 'حُفظ.'; } }), 'أصوات الطبيعة: مطر ورعد وريح وبحر وطير (تُخفَّض مع التلاوة)'),
         h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 'recite', checked: reciteOn(), onchange: (ev) => { store.set('recite', ev.target.checked ? '1' : '0'); rcMsg.textContent = ev.target.checked ? 'التلاوة مفعّلة.' : 'التلاوة متوقفة.'; } }), 'تشغيل التلاوة مع المشهد'),
         h('label', {}, 'القارئ', h('select', { id: 'reciter', onchange: (ev) => { store.set('reciter', ev.target.value); rcMsg.textContent = 'حُفظ القارئ.'; } }, Object.entries(RECITERS).map(([id, r]) => h('option', { value: id, selected: id === reciter() }, r.name)))),
         rcMsg)),
