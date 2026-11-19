@@ -7,6 +7,7 @@ import { Player, drawScene } from './engine/render.js';
 import { LIBRARY } from './scenes/library.js';
 import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel } from './agents/rules.js';
 import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
+import { APP_VERSION, autoCheck, checkUpdate, platform, skip } from './update.js';
 import { runOffline } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
 import { strip } from './agents/rules.js';
@@ -283,7 +284,7 @@ function pageAbout() {
   const key = h('input', { type: 'password', value: store.get('key'), placeholder: 'sk-ant-…', autocomplete: 'off', dir: 'ltr', 'aria-label': 'مفتاح Anthropic API' });
   const model = h('select', { 'aria-label': 'النموذج' }, [['claude-opus-5-5', 'Claude Opus 5.5 (الافتراضي)'], ['claude-fable-5-2', 'Claude Fable 5.2 (الأقدر)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (أسرع)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (الأرخص)']].map(([v, t]) => h('option', { value: v }, t)));
   model.value = store.get('model', 'claude-opus-5-5');
-  const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' }), rcMsg = h('span', { class: 'saved', role: 'status' });
+  const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' }), rcMsg = h('span', { class: 'saved', role: 'status' }), upMsg = h('span', { class: 'saved', role: 'status' });
   mount(h('div', { class: 'page narrow' },
     h('div', { class: 'hero' }, h('h1', {}, 'الضوابط والإعدادات')),
     h('section', { class: 'panel' }, h('h3', {}, 'درجة المراجع الشرعي'),
@@ -305,12 +306,19 @@ function pageAbout() {
       h('div', { class: 'form' }, h('label', {}, 'مفتاح API', key), h('label', {}, 'النموذج', model),
         h('button', { class: 'primary', onclick: () => { store.set('key', key.value.trim()); store.set('model', model.value); msg.textContent = key.value.trim() ? 'حُفظ.' : 'حُذف المفتاح.'; } }, 'حفظ'),
         h('button', { class: 'ghost', onclick: () => { key.value = ''; store.set('key', ''); msg.textContent = 'حُذف المفتاح.'; } }, 'حذف المفتاح'), msg)),
+    h('section', { class: 'panel' }, h('h3', {}, 'التحديثات'),
+      h('p', {}, `الإصدار الحالي: ${AR(APP_VERSION).replace(/\./g, '٫')}. ` + (platform() === 'web' ? 'نسخة الموقع تتحدّث تلقائيًا.' : 'يفحص التطبيق عند فتحه هل صدرت نسخة أحدث، ويُظهر تنبيهًا فيه زر التنزيل.')),
+      h('div', { class: 'form' }, h('button', { class: 'ghost', id: 'check-update', onclick: async () => {
+        upMsg.textContent = 'جارٍ الفحص…';
+        try { const u = await checkUpdate(); if (u) { upMsg.textContent = ''; showUpdate(u); } else upMsg.textContent = 'لديك أحدث إصدار.'; }
+        catch { upMsg.textContent = 'تعذّر الفحص. تحقق من الاتصال بالإنترنت.'; }
+      } }, 'تحقق من التحديثات'), upMsg)),
     h('section', { class: 'panel' }, h('h3', {}, 'المصادر والحقوق'), h('ul', {},
       h('li', {}, 'نصّ القرآن الكريم: مشروع تنزيل (Tanzil.net)، الرسم العثماني، رخصة CC BY 3.0 — يُعرض كما هو دون أي تعديل.'),
       h('li', {}, 'التفسير: التفسير الميسّر، مجمع الملك فهد لطباعة المصحف الشريف (عبر QUL / Tarteel).'),
       h('li', {}, 'الخطوط: Amiri Quran و Tajawal برخصة SIL OFL.'),
       h('li', {}, 'شروح المشاهد صياغة مختصرة لمعنى التفسير الميسّر، وليست نصًّا قرآنيًا ولا تفسيرًا مستقلًا.'))),
-    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ١٫٤٫٠')));
+    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ' + AR(APP_VERSION).replace(/\./g, '٫'))));
 }
 
 // ───────── التنقّل ─────────
@@ -325,4 +333,15 @@ document.addEventListener('click', (e) => { const b = e.target.closest('[data-go
 document.addEventListener('keydown', (e) => { if (e.code === 'Space' && current && !/INPUT|SELECT|BUTTON|TEXTAREA/.test(e.target.tagName)) { e.preventDefault(); current.toggle(); } });
 window.addEventListener('hashchange', router);
 document.fonts?.ready.then(() => current?.draw());
+// شريط التحديث أعلى التطبيق
+function showUpdate(u) {
+  document.querySelector('.update-bar')?.remove();
+  const bar = h('div', { class: 'update-bar', role: 'status' },
+    h('div', { class: 'update-text' }, h('b', {}, `نسخة جديدة متاحة: ${AR(u.version).replace(/\./g, '٫')}`), u.notes ? h('span', {}, u.notes) : null),
+    h('div', { class: 'update-actions' },
+      h('a', { class: 'primary', href: u.url, target: '_blank', rel: 'noopener' }, platform() === 'android' ? 'تنزيل التحديث' : 'صفحة التنزيل'),
+      h('button', { class: 'ghost', onclick: () => { skip(u.version); bar.remove(); } }, 'لاحقًا')));
+  document.querySelector('.top').after(bar);
+}
 router();
+autoCheck(showUpdate);

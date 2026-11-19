@@ -149,3 +149,10 @@ input:not([type=range]), select { background: var(--raise); border: 1px solid va
 .check { display: flex !important; flex-direction: row; align-items: center; gap: 10px; color: var(--text) !important; font-size: 1rem !important; flex: 1 1 100% !important; }
 .check input { width: auto; accent-color: var(--gold); }
 .audio-status { color: var(--teal); }
+
+.update-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); background: var(--raise); border-bottom: 1px solid var(--gold); }
+.update-text { display: grid; min-width: 0; }
+.update-text b { color: var(--gold); }
+.update-text span { color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+.update-actions { display: flex; gap: 8px; align-items: center; }
+.update-actions .primary { text-decoration: none; padding: 8px 18px; }
