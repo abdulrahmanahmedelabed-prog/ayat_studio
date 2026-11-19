@@ -3,6 +3,7 @@
 export class Sfx {
   constructor() { this.ctx = null; this.on = false; this.flash = -1; }
   start() {
+    if (this.dead) return;
     if (!this.ctx) {
       const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
       const ctx = (this.ctx = new C()), n = ctx.sampleRate * 2, buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
@@ -11,9 +12,10 @@ export class Sfx {
       const bed = (type, freq, q) => { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q; const g = ctx.createGain(); g.gain.value = 0; s.connect(f).connect(g).connect(this.master); s.start(); return { g, f }; };
       this.rain = bed('bandpass', 1800, 0.6); this.wind = bed('bandpass', 380, 1.2); this.sea = bed('lowpass', 520, 0.7);
     }
-    this.ctx.resume?.(); this.on = true;
+    this.ctx.resume?.().catch(() => {}); this.on = true;
   }
-  stop() { this.on = false; if (!this.ctx) return; const t = this.ctx.currentTime; for (const b of [this.rain, this.wind, this.sea]) b.g.gain.setTargetAtTime(0, t, 0.15); }
+  close() { this.dead = true; this.on = false; this.ctx?.close().catch(() => {}); }
+  stop() { this.on = false; if (!this.ctx || this.ctx.state === 'closed') return; const t = this.ctx.currentTime; for (const b of [this.rain, this.wind, this.sea]) b.g.gain.setTargetAtTime(0, t, 0.15); }
   duck(v) { if (this.master) this.master.gain.setTargetAtTime(v ? 0.3 : 0.7, this.ctx.currentTime, 0.3); }
   thunder(delay) {
     const ctx = this.ctx, t = ctx.currentTime + delay, s = ctx.createBufferSource(); s.buffer = this.noise;
@@ -28,7 +30,7 @@ export class Sfx {
     o.connect(g).connect(this.master); o.start(t); o.stop(t + 0.2);
   }
   update(scene, t) {
-    if (!this.on || !this.ctx) return;
+    if (!this.on || !this.ctx || this.ctx.state === 'closed') return;
     const live = (type) => scene.elements.filter((e) => e.type === type && t >= (e.from ?? 0) && (e.until == null || t < e.until));
     const now = this.ctx.currentTime, set = (b, v) => b.g.gain.setTargetAtTime(v, now, 0.4);
     const rain = live('rain'), wind = live('wind'), sea = [...live('sea'), ...live('twoSeas'), ...live('depths')];

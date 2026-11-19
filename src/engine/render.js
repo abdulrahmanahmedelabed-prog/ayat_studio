@@ -502,7 +502,7 @@ function camAt(scene, t) {
   return { z, x: clamp(lerp(a.x ?? 0.5, b.x ?? 0.5, u), 0.5 / z, 1 - 0.5 / z), y: clamp(lerp(a.y ?? 0.5, b.y ?? 0.5, u), 0.5 / z, 1 - 0.5 / z) };
 }
 
-export function drawScene(ctx, W, H, scene, t) {
+export function drawScene(ctx, W, H, scene, t, opts = {}) {
   const dur = scene.duration || 24, sky = skyAt(scene, t);
   const e = { W, H, U: Math.min(W, H * 1.35), t, hz: H * (scene.horizon ?? 0.64), light: sky.light, gy: null, dur };
   e.gy = () => e.hz;
@@ -511,10 +511,10 @@ export function drawScene(ctx, W, H, scene, t) {
   const cam = camAt(scene, t);
   ctx.save();
   if (cam) { ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x * W, -cam.y * H); }
-  const g = ctx.createLinearGradient(0, 0, 0, e.hz + H * 0.05); g.addColorStop(0, sky.top); g.addColorStop(1, sky.bot);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (!opts.only) { const g = ctx.createLinearGradient(0, 0, 0, e.hz + H * 0.05); g.addColorStop(0, sky.top); g.addColorStop(1, sky.bot);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); } else e.light = 1;
   for (const el of scene.elements || []) {
-    const fn = DRAW[el.type]; if (!fn) continue;
+    const fn = DRAW[el.type]; if (!fn || (opts.only && !opts.only.includes(el.type))) continue;
     const from = el.from ?? 0, to = el.to ?? dur;
     if (t < from) continue;
     const a = clamp((t - from) / 1.2) * (el.until != null ? clamp((el.until - t) / 1.2) : 1);
@@ -524,6 +524,7 @@ export function drawScene(ctx, W, H, scene, t) {
     ctx.restore();
   }
   ctx.restore();
+  if (opts.only) return;
   const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.8);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.32)'); ctx.globalAlpha = 1; ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
 }
@@ -542,7 +543,7 @@ export class Player {
     this.W = r.width; this.H = r.height; this.ctx.setTransform(d, 0, 0, d, 0, 0); this.draw();
   }
   setScene(scene) { this.scene = scene; this.t = 0; this.resize(); this.onTick(this.t, this); }
-  draw() { if (this.scene && this.W) drawScene(this.ctx, this.W, this.H, this.scene, this.t); }
+  draw() { if (this.scene && this.W) (this.render || drawScene)(this.ctx, this.W, this.H, this.scene, this.t); }
   play() {
     if (!this.scene) return;
     if (this.t >= this.scene.duration - 0.05) this.t = 0;

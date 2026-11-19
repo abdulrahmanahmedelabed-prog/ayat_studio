@@ -8,6 +8,7 @@ import { LIBRARY } from './scenes/library.js';
 import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel } from './agents/rules.js';
 import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
 import { Sfx } from './sfx.js';
+import { Cinema, STYLES, makeReviewer } from './cinema.js';
 import { APP_VERSION, autoCheck, checkUpdate, platform, skip } from './update.js';
 import { runOffline } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
@@ -45,6 +46,7 @@ async function ayat(ref) {
 const level = () => (STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS);
 const reciteOn = () => store.get('recite', '1') === '1';
 const sfxOn = () => store.get('sfx', '1') === '1';
+const lookStyle = () => (STYLES[store.get('look')] || store.get('look') === 'drawn' ? store.get('look') : 'real');
 const reciter = () => (RECITERS[store.get('reciter')] ? store.get('reciter') : DEFAULT_RECITER);
 
 // ───────── الترجمات (QuranEnc، نصّ غير معدَّل) ─────────
@@ -119,7 +121,10 @@ function favButton(id) {
   return b;
 }
 
-function playerView({ title, scene, A, report, ref, favId }) {
+let shotsMan = null;
+const shotsManifest = () => (shotsMan ||= fetch('./cine/manifest.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+
+function playerView({ title, scene, A, report, ref, favId, cine }) {
   const canvas = h('canvas', { class: 'stage', role: 'img', 'aria-label': 'مشهد متحرك: ' + title });
   const cap = h('div', { class: 'caption', 'aria-live': 'polite' });
   const bar = h('input', { type: 'range', min: 0, max: scene.duration, step: 0.05, value: 0, 'aria-label': 'موضع المشهد' });
@@ -136,6 +141,27 @@ function playerView({ title, scene, A, report, ref, favId }) {
     if (c !== lastCap) { lastCap = c; cap.textContent = c ? c.text : ''; cap.classList.remove('in'); void cap.offsetWidth; if (c) cap.classList.add('in'); verse.mark(c?.q); }
   });
   const sfx = sfxOn() ? new Sfx() : null;
+  // الوضع السينمائي: تُولَّد صور اللقطات أثناء العرض بالرسم، ثم يتحوّل المشهد إليها
+  const cineStatus = h('p', { class: 'note cine-status', role: 'status' });
+  if (lookStyle() !== 'drawn') {
+    const key = store.get('key'), sty = STYLES[lookStyle()].name;
+    cineStatus.textContent = `${sty}: يجري تجهيز اللقطات…`;
+    shotsManifest().then((man) => {
+    const cin = new Cinema(scene, lookStyle(), cine || title, cine && man[cine]?.[lookStyle()]);
+    // الصور المولَّدة مباشرة قد تخالف الضوابط (رأينا ذلك في التجربة)، فلا تُعرض إلا بعد مراجعة Claude لكل صورة
+    if (!cin.local && !key) { cineStatus.textContent = `${sty}: لهذا المشهد لقطات لم تُراجَع بعد، فيُعرض بالرسوم. لتوليد لقطات سينمائية لأي آية أضف مفتاح Claude في الإعدادات ليراجع المراجعُ الشرعي كل صورة قبل عرضها.`; return; }
+    p.cinema = cin;
+    const swap = (c) => { p.render = c.draw.bind(c); p.recordable = c.recordable; p.draw(); };
+    return cin.load((d, n, waiting) => { cineStatus.textContent = waiting ? `${sty}: ${AR(d)} من ${AR(n)} لقطات جاهزة · اللقطة التالية بعد ٤٦ ثانية (حدّ الخدمة المجانية)` : `${sty}: ${AR(d)} من ${AR(n)} لقطات…`; },
+      !cin.local && key ? makeReviewer(key, store.get('model', 'claude-opus-5-5')) : null, swap)
+      .then((c) => {
+        if (!c.ready) { cineStatus.textContent = 'تعذّر توليد اللقطات (تحتاج إنترنت)، فيُعرض المشهد بالرسم.'; return; }
+        swap(c);
+        const rej = c.shots.reduce((n, s) => n + (s.rejected || 0), 0);
+        cineStatus.textContent = c.local ? `${sty} · ${AR(c.ready)} لقطات مُعدّة ومراجَعة مسبقًا` : `${sty} · ${AR(c.ready)} لقطات راجعها المراجع الشرعي${rej ? ` واستبدل ${AR(rej)}` : ''} · الفيديو المحفوظ يكون بالرسوم`;
+      });
+    });
+  }
   // التلاوة: حين تعمل تقود زمن المشهد، فيمتد المشهد على طول التلاوة
   const status = h('p', { class: 'note audio-status', role: 'status' });
   const rc = ref && reciteOn() ? new Recitation(ref, reciter()) : null;
@@ -153,7 +179,7 @@ function playerView({ title, scene, A, report, ref, favId }) {
     pause: () => { rc?.pause(); sfx?.stop(); },
     seek: (t) => { if (rc && audioOk && rc.total) rc.seekFrac(t / scene.duration); },
   };
-  p.cleanup = () => { rc?.destroy(); sfx?.stop(); sfx?.ctx?.close(); };
+  p.cleanup = () => { if (p.cinema) p.cinema.stopped = true; rc?.destroy(); sfx?.close(); p.dead = true; };
   bar.addEventListener('input', () => p.seek(+bar.value));
   playBtn.addEventListener('click', () => p.toggle());
   const speed = h('button', { class: 'ghost', onclick: () => { p.speed = p.speed === 1 ? 0.5 : 1; rc?.setRate(p.speed); speed.textContent = p.speed === 1 ? 'سرعة ×١' : 'سرعة ×½'; } }, 'سرعة ×١');
@@ -162,10 +188,10 @@ function playerView({ title, scene, A, report, ref, favId }) {
   const rec = canRec ? h('button', { class: 'ghost', onclick: () => recordVideo(p, scene, title, rec, rc && audioOk ? rc : null, status) }, 'حفظ فيديو') : null;
   const full = h('button', { class: 'ghost', onclick: () => (document.fullscreenElement ? document.exitFullscreen() : wrap.requestFullscreen?.()) }, 'ملء الشاشة');
   canvas.addEventListener('click', () => p.toggle());
-  queueMicrotask(() => { current = p; p.setScene(scene); setTimeout(() => p.play(), 350); });
+  queueMicrotask(() => { current = p; p.setScene(scene); setTimeout(() => { if (!p.dead) p.play(); }, 350); });
   return h('div', { class: 'player' },
     h('div', { class: 'col-stage' }, wrap, h('div', { class: 'controls' }, playBtn, bar, time, speed, full, rec),
-      rc ? status : null, h('p', { class: 'note' }, 'المشهد وسيلة إيضاح للمعنى وليس تفسيرًا. المرجع هو التفسير أدناه وأهل العلم.')),
+      lookStyle() !== 'drawn' ? cineStatus : null, rc ? status : null, h('p', { class: 'note' }, 'المشهد وسيلة إيضاح للمعنى وليس تفسيرًا. المرجع هو التفسير أدناه وأهل العلم.')),
     h('div', { class: 'col-text' }, h('div', { class: 'titlerow' }, h('h2', {}, title), favId ? favButton(favId) : null), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, translationBlock(A), tafsirBlock(A), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
 }
 
@@ -197,7 +223,7 @@ async function recordVideo(p, scene, title, btn, rc, status) {
   await new Promise((resolve) => {
     const frame = () => {
       const el = Math.min(total, (performance.now() - t0) / 1000), t = (el / total) * scene.duration;
-      drawScene(ctx, W, H, scene, t);
+      (p.render && p.recordable !== false ? p.render : drawScene)(ctx, W, H, scene, t);
       let c = null; for (const x of scene.captions) if (x.t <= t) c = x;
       if (c) {
         const g = ctx.createLinearGradient(0, H - 150, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.75)');
@@ -254,7 +280,7 @@ async function pageScene(id) {
   const item = LIBRARY.find((x) => x.id === id); if (!item) return go('library');
   mount(h('p', { class: 'loading' }, 'جارٍ التحميل…'));
   const A = await ayat(item.ref), sc = forLevel(item, level()); markSeen(item.id);
-  mount(h('div', { class: 'page' }, h('button', { class: 'back', onclick: () => go('library') }, '→ المكتبة'), playerView({ title: item.title, scene: sc, A, report: curatedReport(sc, A), ref: item.ref, favId: item.id })));
+  mount(h('div', { class: 'page' }, h('button', { class: 'back', onclick: () => go('library') }, '→ المكتبة'), playerView({ title: item.title, scene: sc, A, report: curatedReport(sc, A), ref: item.ref, favId: item.id, cine: item.id })));
 }
 
 const STEPS = ['tafsir', 'review', 'paint', 'animate', 'final'];
@@ -322,7 +348,7 @@ function pageAbout() {
   const key = h('input', { type: 'password', value: store.get('key'), placeholder: 'sk-ant-…', autocomplete: 'off', dir: 'ltr', 'aria-label': 'مفتاح Anthropic API' });
   const model = h('select', { 'aria-label': 'النموذج' }, [['claude-opus-5-5', 'Claude Opus 5.5 (الافتراضي)'], ['claude-fable-5-2', 'Claude Fable 5.2 (الأقدر)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (أسرع)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (الأرخص)']].map(([v, t]) => h('option', { value: v }, t)));
   model.value = store.get('model', 'claude-opus-5-5');
-  const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' }), rcMsg = h('span', { class: 'saved', role: 'status' }), upMsg = h('span', { class: 'saved', role: 'status' }), trMsg = h('span', { class: 'saved', role: 'status' });
+  const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' }), rcMsg = h('span', { class: 'saved', role: 'status' }), upMsg = h('span', { class: 'saved', role: 'status' }), trMsg = h('span', { class: 'saved', role: 'status' }), lookMsg = h('p', { class: 'saved', role: 'status' });
   mount(h('div', { class: 'page narrow' },
     h('div', { class: 'hero' }, h('h1', {}, 'الضوابط والإعدادات')),
     h('section', { class: 'panel' }, h('h3', {}, 'درجة المراجع الشرعي'),
@@ -333,6 +359,10 @@ function pageAbout() {
       })), lvlMsg),
     h('section', { class: 'panel' }, h('h3', {}, 'الضوابط الشرعية للمشاهد'), h('ol', { class: 'policy' }, POLICY.map((p) => h('li', {}, p))),
       h('p', { class: 'src' }, 'هذه الضوابط مبنية في المحرّك: لا يملك عناصر للغيب، والشخصيات العامة تُحذف آليًا خارج درجة «متساهل»، ثم يُفحص كل مشهد قبل عرضه. ومع ذلك فالتطبيق جهد بشري وآلي يحتمل الخطأ، ويُستحسن عرض المشاهد المولَّدة على طالب علم قبل نشرها أو تعليمها.')),
+    h('section', { class: 'panel' }, h('h3', {}, 'أسلوب العرض'),
+      h('p', {}, 'السينمائي يولّد لكل لقطة صورة بالذكاء الاصطناعي مجانًا (خدمة Pollinations، تحتاج إنترنت وتضع علامتها في زاوية الصورة)، ثم يحرّكها بحركة كاميرا ومؤثرات. يظهر في العرض فقط، أما الفيديو المحفوظ فيُسجَّل بالرسوم. الوصف يُبنى من عناصر المشهد لا من نص الآية، ويمنع دائمًا الملائكة والأجنحة على البشر والهالات والشخصيات الدينية. المشاهد التي لها لقطات مُعدّة ومراجَعة تعمل فورًا ودون إنترنت. ولتوليد لقطات لأي آية أخرى يلزم مفتاح Claude، ليفحص المراجع الشرعي كل صورة قبل عرضها، لأن الخدمة المجانية قد تُخرج صورًا مخالفة.'),
+      h('div', { class: 'levels', role: 'radiogroup', 'aria-label': 'أسلوب العرض' }, [['real', 'سينمائي واقعي', 'صور تشبه التصوير الحقيقي.'], ['anime', 'سينمائي أنمي', 'صور بأسلوب أفلام الأنمي المرسومة.'], ['drawn', 'رسوم التطبيق', 'الرسوم المتحركة المبنية في التطبيق. تعمل دون إنترنت وتظهر فيها الأقوال والانفعالات كاملة.']].map(([id, name, desc]) =>
+        h('label', { class: 'level' }, h('input', { type: 'radio', name: 'look', id: 'look-' + id, value: id, checked: lookStyle() === id, onchange: () => { store.set('look', id); lookMsg.textContent = 'حُفظ: ' + name; } }), h('span', {}, h('b', {}, name), h('small', {}, desc))))), lookMsg),
     h('section', { class: 'panel' }, h('h3', {}, 'الترجمة'),
       h('p', {}, 'تظهر ترجمة معاني الآية تحت نصّها، لمن لا يحسن العربية. الترجمات من QuranEnc.com كما هي دون تعديل، وتعمل دون إنترنت.'),
       h('div', { class: 'form' }, h('label', {}, 'لغة الترجمة', h('select', { id: 'lang', onchange: (ev) => { store.set('lang', ev.target.value); trMsg.textContent = 'حُفظ.'; } },

@@ -6,3 +6,4 @@ android/.tools/
 android/*.p12
 *.log
 keys/
+public/shots/
