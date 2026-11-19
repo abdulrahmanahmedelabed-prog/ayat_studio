@@ -60,41 +60,53 @@ function compose(ids) {
   return { duration: D, sky, elements: E.map((e) => Object.fromEntries(Object.entries(e).filter(([, v]) => v !== undefined))) };
 }
 
+// يقسّم التفسير إلى جمل قصيرة تُعرض لقطاتٍ على المشهد العام
+function tafsirBeats(tafsir, D) {
+  const parts = (tafsir || '').split(/[.،؛:؟!]\s+/).map((x) => x.trim()).filter((x) => x.length > 8).slice(0, 5);
+  return parts.map((text, i) => ({ t: +(1 + (i * (D - 7)) / Math.max(1, parts.length)).toFixed(1), text: text.length > 120 ? text.slice(0, 117) + '…' : text }));
+}
+
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // يُرجع { ok, scene?, report } ويُبلغ عن كل مرحلة عبر onStep(id, state, detail)
-export async function runOffline({ clean, tafsir }, onStep) {
-  const report = { mode: 'offline' };
+export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onStep) {
+  const report = { mode: 'offline', strictness };
   onStep('tafsir', 'run'); await wait(350);
   const found = detect(clean);
   report.tafsir = { source: 'التفسير الميسّر (مجمع الملك فهد)', summary: tafsir, visuals: found.map((f) => f.cap) };
   onStep('tafsir', 'done', found.length ? `مفاهيم مرئية: ${found.map((f) => f.cap).join('، ')}` : 'لا مفاهيم كونية مرئية في الآية');
 
   onStep('review', 'run'); await wait(350);
-  const barriers = textBarriers(clean);
-  if (barriers.length || !found.filter((f) => f.id !== 'earth').length) {
+  const barriers = textBarriers(clean), visual = found.filter((f) => f.id !== 'earth').length > 0;
+  const allowed = strictness === 'lenient' || (visual && (strictness === 'balanced' ? !barriers.some((b) => /غيبي|صفة/.test(b)) : !barriers.length));
+  if (allowed) {
+    const notes = barriers.map((b) => `يُترك من المشهد: ${b}`);
+    if (!visual) notes.push('لا محسوس كوني صريح في الآية: يُرسم مشهد عام هادئ يرافق التفسير');
+    report.review = { verdict: 'allow', leaveOut: notes };
+    onStep('review', 'done', notes.join(' — ') || 'لا موانع: الآية في مشهد كوني محسوس');
+  } else {
     const reasons = barriers.length ? barriers.map((b) => `في الآية ${b}`) : ['ليس في الآية مشهد كوني محسوس يصحّ رسمه (حُكم أو خبر أو غيب)'];
     report.review = { verdict: 'reject', reasons, note: 'المراجع دون اتصال متحفّظ: يمنع المشهد كله عند أي شبهة.' };
     onStep('review', 'stop', reasons.join(' — '));
     return { ok: false, report };
   }
-  onStep('review', 'done', 'لا موانع: الآية في مشهد كوني محسوس');
 
   onStep('paint', 'run'); await wait(400);
-  const scene = compose(found.map((f) => f.id));
+  const ids = found.map((f) => f.id), calm = !ids.some((x) => x !== 'earth');
+  const scene = compose(calm ? ['day', 'plants', 'mountains'] : ids);
   report.paint = { elements: scene.elements.map((e) => TYPE_NAMES[e.type]) };
   onStep('paint', 'done', [...new Set(report.paint.elements)].join('، '));
 
   onStep('animate', 'run'); await wait(400);
   const caps = found.filter((f) => f.id !== 'earth' || found.length === 1);
-  scene.captions = caps.map((f, i) => ({ t: +(1 + (i * (scene.duration - 7)) / Math.max(1, caps.length)).toFixed(1), text: f.cap }));
+  scene.captions = calm ? tafsirBeats(tafsir, scene.duration) : caps.map((f, i) => ({ t: +(1 + (i * (scene.duration - 7)) / Math.max(1, caps.length)).toFixed(1), text: f.cap }));
   scene.captions.push({ t: scene.duration - 4.5, text: 'مشهد تقريبي آلي — المعنى الكامل في التفسير أسفل المشهد' });
   report.animate = { duration: scene.duration, beats: scene.captions.length };
   onStep('animate', 'done', `${scene.duration} ثانية، ${scene.captions.length} لقطات`);
 
   onStep('final', 'run'); await wait(300);
   const checks = checkScene(scene);
-  report.review = { verdict: checks.every((c) => c.ok) ? 'approve' : 'reject', checks, reasons: [] };
+  report.review = { ...report.review, verdict: checks.every((c) => c.ok) ? 'approve' : 'reject', checks, reasons: [] };
   onStep('final', checks.every((c) => c.ok) ? 'done' : 'stop', 'اجتاز الفحص الآلي للضوابط');
   return { ok: checks.every((c) => c.ok), scene, report };
 }

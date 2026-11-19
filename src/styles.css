@@ -129,3 +129,10 @@ input:not([type=range]), select { background: var(--raise); border: 1px solid va
 .w.hl { background: rgba(224, 189, 98, .5); box-shadow: 0 0 0 3px rgba(224, 189, 98, .5); }
 .timeline button { display: flex; gap: 10px; text-align: start; width: 100%; padding: 3px 4px; border-radius: 6px; color: inherit; }
 .timeline button:hover { background: var(--raise); }
+
+.levels { display: grid; gap: 10px; margin-top: 12px; }
+.level { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; background: var(--raise); }
+.level:has(input:checked) { border-color: var(--gold); }
+.level input { width: auto; margin-top: 6px; accent-color: var(--gold); }
+.level b { display: block; }
+.level small { display: block; color: var(--muted); font-size: .88rem; line-height: 1.7; }

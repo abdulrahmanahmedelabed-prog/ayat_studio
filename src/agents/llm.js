@@ -35,7 +35,10 @@ ${RULES}
 const AGENTS = {
   tafsir: `دورك: «جامع التفسير». يُعطى لك نص الآية ونص التفسير الميسّر لها. لخّص المعنى من النص المعطى، ولا تنسب قولًا إلى مفسّر آخر إلا إن كنت متيقنًا منه، وعلِّمه حينئذ بـ"يُراجَع". لا تجتهد في معنى جديد.
 أخرج: {"summary": "المعنى في جملتين", "points": [{"text": "...", "source": "الميسّر | ابن كثير (يُراجَع) ..."}], "kind": "kawni|mathal|qasas|hukm|ghayb|aqida", "visuals": ["المحسوسات التي ذكرتها الآية نفسها مما يصلح للرسم"], "not_visual": ["ما في الآية مما لا يُرسم ولماذا"]}`,
-  review: `دورك: «المراجع الشرعي». تقرّر هل يجوز بناء مشهد لهذه الآية وفق الضوابط، وما قيوده. كن متحفّظًا: إن دار المشهد على نبي أو ملَك أو غيب أو صفة لله فارفض. إن كانت الآية مَثَلًا أو آية كونية فأجز رسم المحسوس منها فقط وحدّد ما يُترك.
+  review: `دورك: «المراجع الشرعي». تقرّر هل يُبنى مشهد لهذه الآية، وما قيوده، بحسب درجة التشدد المعطاة في الطلب (strictness):
+- lenient (متساهل جدًا): أجز دائمًا تقريبًا. لا ترفض إلا إذا كان المطلوب رسمه هو ذات الله نفسها. ما لا يُرسم (أشخاص، أنبياء، ملائكة، غيب) ضعه في leave_out وأجز رسم الباقي، وإن لم يبق محسوس فأجز مشهدًا عامًّا هادئًا (سماء وأرض ونور) يرافق التفسير.
+- balanced (معتدل): أجز إذا كان في الآية محسوس كوني أو مَثَل، واترك ما لا يُرسم، وارفض إن دار المعنى كله على الغيب أو الصفات.
+- strict (متشدد): ارفض عند أي ذكر لنبي أو ملَك أو غيب أو صفة لله، ولا تجز إلا الآيات الكونية الصريحة.
 أخرج: {"verdict": "allow|reject", "reasons": ["..."], "constraints": ["قيود على الرسام"], "leave_out": ["ما لا يُرسم من الآية"]}`,
   paint: `دورك: «الرسّام». تؤلّف تكوين المشهد من العناصر المتاحة فقط، ملتزمًا بقيود المراجع، بحيث يطابق كل عنصر محسوسًا ذكرته الآية أو التفسير. لا تزخرف بما ليس في المعنى.
 ${DSL}
@@ -43,7 +46,7 @@ ${DSL}
   animate: `دورك: «المحرّك». تأخذ تكوين الرسّام وتضيف الزمن: متى يظهر كل عنصر ومتى تكتمل حركته، وتحولات السماء، بحيث يتتابع المشهد بترتيب ورود المعاني في الآية ويُفهم دون صوت. ثم اكتب 3 إلى 7 شروح قصيرة (أقل من 14 كلمة) مأخوذة من معنى التفسير، ولا تكتب نص الآية نفسه فيها.
 ${DSL}
 أخرج المشهد الكامل بالشكل الموصوف.`,
-  final: `دورك: «المراجع الشرعي» في المراجعة الختامية. أمامك المشهد النهائي وشروحه. تحقق من كل ضابط، ومن أن الشروح لا تزيد على معنى التفسير المعطى ولا تخطئ فيه.
+  final: `دورك: «المراجع الشرعي» في المراجعة الختامية. أمامك المشهد النهائي وشروحه ودرجة التشدد (strictness). تحقق من أن الشروح لا تخطئ في معنى التفسير المعطى. في الدرجة lenient لا ترفض المشهد: أصلح الشروح واحذف العنصر المخالف فقط. في الدرجات الأخرى طبّق الضوابط كاملة.
 أخرج: {"verdict": "approve|revise|reject", "issues": ["..."], "remove_elements": [أرقام فهارس العناصر التي تُحذف], "caption_fixes": [{"index": رقم, "text": "النص المصحَّح"}], "note": "خلاصة في جملة"}`,
 };
 
@@ -89,9 +92,9 @@ export function explainError(err) {
   return err?.message || String(err);
 }
 
-export async function runLLM({ apiKey, model = DEFAULT_MODEL, refText, verse, clean, tafsir }, onStep) {
-  const client = makeClient(apiKey), report = { mode: 'ai', model };
-  const ayah = { reference: refText, verse_text: verse, tafsir_muyassar: tafsir };
+export async function runLLM({ apiKey, model = DEFAULT_MODEL, refText, verse, clean, tafsir, strictness = 'lenient' }, onStep) {
+  const client = makeClient(apiKey), report = { mode: 'ai', model, strictness };
+  const ayah = { reference: refText, verse_text: verse, tafsir_muyassar: tafsir, strictness };
 
   onStep('tafsir', 'run');
   const tf = await ask(client, model, 'tafsir', ayah);
@@ -123,7 +126,7 @@ export async function runLLM({ apiKey, model = DEFAULT_MODEL, refText, verse, cl
   const rm = new Set((fin.remove_elements || []).filter(Number.isInteger));
   scene.elements = scene.elements.filter((_, i) => !rm.has(i));
   for (const f of fin.caption_fixes || []) if (scene.captions[f.index] && typeof f.text === 'string') scene.captions[f.index].text = f.text.slice(0, 130);
-  const checks = checkScene(scene), ok = fin.verdict !== 'reject' && checks.every((c) => c.ok) && scene.elements.length > 0;
+  const checks = checkScene(scene), ok = (fin.verdict !== 'reject' || strictness === 'lenient') && checks.every((c) => c.ok) && scene.elements.length > 0;
   report.review = { verdict: ok ? 'approve' : 'reject', checks, reasons: fin.issues || [], constraints: rv.constraints || [], leaveOut: rv.leave_out || [], note: fin.note };
   onStep('final', ok ? 'done' : 'stop', fin.note || (ok ? 'أُجيز' : 'رُفض المشهد'));
   return { ok, scene: ok ? scene : undefined, report };

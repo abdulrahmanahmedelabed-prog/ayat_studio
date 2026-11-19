@@ -5,7 +5,7 @@ import '@fontsource/tajawal/arabic-700.css';
 import './styles.css';
 import { Player, drawScene } from './engine/render.js';
 import { LIBRARY } from './scenes/library.js';
-import { POLICY, TYPE_NAMES, checkScene } from './agents/rules.js';
+import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS } from './agents/rules.js';
 import { runOffline } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
 
@@ -154,9 +154,10 @@ async function pageStudio() {
   sel.addEventListener('change', () => { from.value = to.value = 1; fix(); }); from.addEventListener('change', () => { to.value = from.value; fix(); }); to.addEventListener('change', fix);
   const key = store.get('key'), out = h('div', { class: 'result' }), steps = h('ol', { class: 'steps' });
   const btn = h('button', { class: 'primary' }, 'ابنِ المشهد');
-  const mode = h('p', { class: 'mode' }, key ? `الوضع: وكلاء الذكاء الاصطناعي (${store.get('model', 'claude-opus-5-5')})` : 'الوضع: وكلاء دون اتصال (قواعد محلية). أضف مفتاح API من الإعدادات لتفعيل وكلاء الذكاء الاصطناعي.');
+  const level = STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS;
+  const mode = h('p', { class: 'mode' }, `المراجع الشرعي: ${STRICTNESS[level].name} (يُغيَّر من الإعدادات) · `, key ? `الوضع: وكلاء الذكاء الاصطناعي (${store.get('model', 'claude-opus-5-5')})` : 'الوضع: وكلاء دون اتصال (قواعد محلية). أضف مفتاح API من الإعدادات لتفعيل وكلاء الذكاء الاصطناعي.');
   const run = async () => {
-    fix(); const ref = { s: +sel.value, from: +from.value, to: +to.value };
+    fix(); const ref = { s: +sel.value, from: +from.value, to: +to.value }, strict = STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS;
     store.set('s', String(ref.s)); store.set('a', String(ref.from));
     btn.disabled = true; out.replaceChildren(); current?.destroy(); current = null;
     const rows = Object.fromEntries(STEPS.map((id) => [id, h('li', { 'data-state': 'wait' }, h('b', {}, AGENT_NAMES[id]), h('span', {}))]));
@@ -166,8 +167,8 @@ async function pageStudio() {
       const A = await ayat(ref);
       const made = LIBRARY.find((x) => x.ref.s === ref.s && x.ref.from === ref.from && x.ref.to === ref.to);
       let res;
-      if (key) { const { runLLM } = await import('./agents/llm.js'); res = await runLLM({ apiKey: key, model: store.get('model', 'claude-opus-5-5'), refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir }, onStep); }
-      else res = await runOffline({ clean: A.clean, tafsir: A.tafsir }, onStep);
+      if (key) { const { runLLM } = await import('./agents/llm.js'); res = await runLLM({ apiKey: key, model: store.get('model', 'claude-opus-5-5'), refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
+      else res = await runOffline({ clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep);
       if (res.ok) { res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report })); }
       else out.replaceChildren(h('div', { class: 'rejected' }, h('h2', {}, 'هذه الآية لا يُبنى لها مشهد'),
         h('p', {}, 'قرّر المراجع الشرعي أن تصويرها لا يصحّ. تُقرأ وتُفهم من التفسير:'), h('ul', {}, (res.report.review?.reasons || []).map((r) => h('li', {}, r))), verseBlock(A), tafsirBlock(A)));
@@ -193,9 +194,15 @@ function pageAbout() {
   const key = h('input', { type: 'password', value: store.get('key'), placeholder: 'sk-ant-…', autocomplete: 'off', dir: 'ltr', 'aria-label': 'مفتاح Anthropic API' });
   const model = h('select', { 'aria-label': 'النموذج' }, [['claude-opus-5-5', 'Claude Opus 5.5 (الافتراضي)'], ['claude-fable-5-2', 'Claude Fable 5.2 (الأقدر)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (أسرع)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (الأرخص)']].map(([v, t]) => h('option', { value: v }, t)));
   model.value = store.get('model', 'claude-opus-5-5');
-  const msg = h('span', { class: 'saved', role: 'status' });
+  const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' });
   mount(h('div', { class: 'page narrow' },
     h('div', { class: 'hero' }, h('h1', {}, 'الضوابط والإعدادات')),
+    h('section', { class: 'panel' }, h('h3', {}, 'درجة المراجع الشرعي'),
+      h('p', {}, 'تحدد متى يمنع المراجعُ المشهد. الرسم نفسه لا يتضمن في كل الدرجات إنسانًا ولا حيوانًا بملامح ولا غيبًا، لأن المحرّك لا يملك عناصر لها.'),
+      h('div', { class: 'levels', role: 'radiogroup', 'aria-label': 'درجة المراجع الشرعي' }, Object.entries(STRICTNESS).map(([id, L]) => {
+        const cur = (STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS) === id;
+        return h('label', { class: 'level' }, h('input', { type: 'radio', name: 'strict', id: 'strict-' + id, value: id, checked: cur, onchange: () => { store.set('strict', id); lvlMsg.textContent = 'حُفظ: ' + L.name; } }), h('span', {}, h('b', {}, L.name), h('small', {}, L.desc)));
+      })), lvlMsg),
     h('section', { class: 'panel' }, h('h3', {}, 'الضوابط الشرعية للمشاهد'), h('ol', { class: 'policy' }, POLICY.map((p) => h('li', {}, p))),
       h('p', { class: 'src' }, 'هذه الضوابط مبنية في المحرّك نفسه: مفردات الرسم لا تحتوي أصلًا على إنسان ولا حيوان بملامح ولا غيبيات، ثم يُفحص كل مشهد آليًا قبل عرضه. ومع ذلك فالتطبيق جهد بشري وآلي يحتمل الخطأ، ويُستحسن عرض المشاهد المولَّدة على طالب علم قبل نشرها أو تعليمها.')),
     h('section', { class: 'panel' }, h('h3', {}, 'وكلاء الذكاء الاصطناعي (اختياري)'),
@@ -208,7 +215,7 @@ function pageAbout() {
       h('li', {}, 'التفسير: التفسير الميسّر، مجمع الملك فهد لطباعة المصحف الشريف (عبر QUL / Tarteel).'),
       h('li', {}, 'الخطوط: Amiri Quran و Tajawal برخصة SIL OFL.'),
       h('li', {}, 'شروح المشاهد صياغة مختصرة لمعنى التفسير الميسّر، وليست نصًّا قرآنيًا ولا تفسيرًا مستقلًا.'))),
-    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ١٫١٫٠')));
+    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ١٫٢٫٠')));
 }
 
 // ───────── التنقّل ─────────
