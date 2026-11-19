@@ -1,0 +1,47 @@
+name: build
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run dist:win -- --publish never
+      - uses: actions/upload-artifact@v4
+        with: { name: mashhadaya-windows, path: release/*.exe }
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with: { files: release/*.exe }
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - run: npm ci
+      # لتوقيع ثابت بين الإصدارات أضف السرّين ANDROID_KEYSTORE_BASE64 و ANDROID_KEYSTORE_PASS في إعدادات المستودع
+      - name: keystore
+        env: { KS: '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' }
+        if: env.KS != ''
+        run: echo "$KS" | base64 -d > android/release.p12
+      - run: npm run dist:android
+        env:
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS || 'mashhadaya' }}
+          VERSION_CODE: ${{ github.run_number }}
+      - uses: actions/upload-artifact@v4
+        with: { name: mashhadaya-android, path: release/*.apk }
+      - uses: actions/upload-artifact@v4
+        with: { name: mashhadaya-web, path: dist }
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with: { files: release/*.apk }

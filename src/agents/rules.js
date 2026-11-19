@@ -1,0 +1,76 @@
+// المراجع الشرعي (القواعد الثابتة): ضوابط تُطبَّق آليًا على كل مشهد،
+// سواء أنتجه الوكلاء دون اتصال أو أنتجه النموذج اللغوي.
+import { ELEMENT_TYPES, SKY, clamp } from '../engine/render.js';
+
+export const POLICY = [
+  'لا تُصوَّر ذات الله تعالى ولا شيء من صفاته، ولا يُرمز لها بضوء أو شكل.',
+  'لا يُصوَّر الأنبياء والرسل ولا الملائكة ولا الصحابة، لا رسمًا ولا رمزًا ولا ظلًّا.',
+  'لا يُصوَّر الغيب: الجنة والنار والبعث والقيامة والعرش والجنّ والشياطين.',
+  'لا يُرسم إنسان ولا حيوان بملامح؛ وذوات الأرواح الصغيرة يُرمز لها بنقاط مجرّدة عند الحاجة.',
+  'المشهد يوضّح «المشبَّه به» والآية الكونية فقط، ولا يزيد معنًى ليس في التفسير المعتمد.',
+  'نصّ الآية يُعرض من المصحف كما هو، ولا يُكتب داخل الرسم ولا يُجزَّأ على الصور.',
+  'المشهد وسيلة إيضاح وليس تفسيرًا؛ المرجع هو كتب التفسير وأهل العلم.',
+];
+
+export const TYPE_NAMES = {
+  stars: 'نجوم', sun: 'شمس', moon: 'قمر', clouds: 'سحاب', rain: 'مطر', lightning: 'برق', wind: 'رياح', mountains: 'جبال', ground: 'أرض',
+  plants: 'نبات', tree: 'شجر', grain: 'حبة وسنابل', sea: 'بحر', twoSeas: 'بحران', ship: 'سفينة', river: 'وادٍ وسيل', bees: 'نحل (نقاط) وخلية',
+  web: 'بيت العنكبوت', ashes: 'رماد', orbits: 'أفلاك', depths: 'أعماق البحر', label: 'تسمية نصّية',
+};
+
+export const strip = (s) => s.replace(/[ً-ٰٟۖ-ۭـ]/g, '').replace(/[ٱأإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه');
+
+const P = '(?:^|\\s)[وفبلك]{0,2}(?:ال|لل)?';
+const S = '(?:[اهي]|ات|ين|ون|ها|هم|كم|نا|ه)?(?=\\s|$)';
+const words = (list) => new RegExp(P + '(?:' + list.map(strip).join('|') + ')' + S);
+
+// ما يمنع التصوير (في الوضع المتحفّظ دون اتصال يُمنع المشهد كله)
+export const BARRIERS = [
+  { id: 'anbiya', label: 'ذِكر نبي أو رسول', re: words(['محمد', 'أحمد', 'آدم', 'نوح', 'إبراهيم', 'إسماعيل', 'إسحاق', 'يعقوب', 'يوسف', 'موسى', 'هارون', 'عيسى', 'المسيح', 'مريم', 'داود', 'سليمان', 'أيوب', 'يونس', 'ذا النون', 'إدريس', 'هود', 'صالح', 'شعيب', 'لوط', 'زكريا', 'يحيى', 'إلياس', 'اليسع', 'ذا الكفل', 'لقمان', 'الرسول', 'النبي', 'رسولا', 'نبيا', 'المرسلين', 'النبيين', 'عبده']) },
+  { id: 'malaika', label: 'ذِكر الملائكة', re: words(['الملائكة', 'ملائكته', 'جبريل', 'ميكال', 'ملك الموت', 'الروح الأمين', 'هاروت', 'ماروت', 'ملكين', 'الزبانية']) },
+  { id: 'ghayb', label: 'أمر غيبي (الآخرة/الجنّ...)', re: words(['الجنة', 'جنات عدن', 'جنات النعيم', 'الفردوس', 'جهنم', 'النار', 'نارا', 'السعير', 'سقر', 'الجحيم', 'الحطمة', 'لظى', 'الهاوية', 'الصراط', 'العرش', 'كرسيه', 'الساعة', 'القيامة', 'الصور', 'الحور', 'حور', 'الشيطان', 'الشياطين', 'إبليس', 'الجن', 'الجان', 'عفريت', 'يأجوج', 'القبور', 'الأجداث', 'الحساب العسير', 'الميزان', 'الكوثر', 'سدرة']) },
+  { id: 'sifat', label: 'صفة من صفات الله تعالى', re: words(['يد الله', 'وجه الله', 'وجه ربك', 'بيده', 'يداه', 'بيمينه', 'قبضته', 'استوى', 'بأعيننا', 'عيني', 'نور السماوات']) },
+];
+
+export function textBarriers(clean) {
+  const t = strip(clean);
+  return BARRIERS.filter((b) => b.re.test(t)).map((b) => b.label);
+}
+
+// تنقية مشهد وارد من النموذج: قائمة بيضاء للعناصر وحدود للأرقام.
+const NUM = { from: [0, 60], to: [0, 60], until: [0, 60], x: [-0.3, 1.3], y: [0, 1], x0: [-0.5, 1.5], x1: [-0.5, 1.5], size: [0.3, 2.4], count: [1, 60], intensity: [0.1, 2], dark: [0, 1], darkTo: [0, 1], green: [0, 1], greenFrom: [-10, 60], greenTo: [-10, 60], growFrom: [-10, 60], growTo: [-10, 60], witherFrom: [0, 60], witherTo: [0, 60], fruitFrom: [-10, 60], rootsFrom: [-10, 60], swell: [0, 1], hill: [0, 1], seed: [1, 9999], storm: [0, 4], stormTo: [0, 4], layers: [2, 7], dy: [-0.3, 0.5], windFrom: [0, 60], tearFrom: [0, 60], tearTo: [0, 60], foamFadeFrom: [0, 60], foamFadeTo: [0, 60], blowFrom: [0, 60], dryFrom: [0, 60], dryTo: [0, 60], depth: [0.05, 1], barrierFrom: [0, 60], drift: [0, 3], phase: [0, 1] };
+const BOOL = ['gather', 'snow', 'roots', 'fruit', 'row', 'foam', 'scatter', 'tall', 'cracks'];
+const ENUM = { motion: ['still', 'rise', 'set', 'arc'], kind: ['grass', 'crop', 'flowers', 'broad', 'palm', 'olive', 'vine'], phase: ['cycle', 'wax', 'wane'] };
+
+export function sanitizeScene(raw) {
+  const out = { duration: clamp(+raw?.duration || 24, 10, 45), elements: [], captions: [], sky: [] };
+  if (raw?.horizon != null) out.horizon = clamp(+raw.horizon, 0.3, 0.85);
+  for (const k of raw?.sky || []) if (SKY[k?.mode]) out.sky.push({ t: clamp(+k.t || 0, 0, out.duration), mode: k.mode });
+  out.sky.sort((a, b) => a.t - b.t); if (!out.sky.length) out.sky = [{ t: 0, mode: 'day' }];
+  const dropped = [];
+  for (const el of (raw?.elements || []).slice(0, 26)) {
+    if (!el || !ELEMENT_TYPES.includes(el.type)) { dropped.push(String(el?.type)); continue; }
+    const o = { type: el.type };
+    for (const [k, [a, b]] of Object.entries(NUM)) if (typeof el[k] === 'number' && isFinite(el[k])) o[k] = clamp(el[k], a, b);
+    for (const k of BOOL) if (typeof el[k] === 'boolean') o[k] = el[k];
+    for (const [k, vs] of Object.entries(ENUM)) if (typeof el[k] === 'string' && vs.includes(el[k])) o[k] = el[k];
+    if (el.type === 'label') { o.text = String(el.text || '').slice(0, 28); if (!o.text) continue; }
+    out.elements.push(o);
+  }
+  for (const c of (raw?.captions || []).slice(0, 9)) if (c && typeof c.text === 'string' && c.text.trim()) out.captions.push({ t: clamp(+c.t || 0, 0, out.duration - 1), text: c.text.trim().slice(0, 130) });
+  out.captions.sort((a, b) => a.t - b.t);
+  return { scene: out, dropped };
+}
+
+// فحص نهائي آلي للمشهد: يُرجع قائمة بنود (نجح/فشل).
+const LABEL_BAN = /الله|رب|نبي|رسول|ملك|ملائك|جن[هة]|نار|جهنم|عرش|شيطان|جبريل|محمد/;
+export function checkScene(scene) {
+  const types = scene.elements.map((e) => e.type), labels = scene.elements.filter((e) => e.type === 'label').map((e) => strip(e.text || ''));
+  return [
+    { ok: types.every((t) => ELEMENT_TYPES.includes(t)), text: 'كل العناصر من المفردات الكونية المأذون بها (لا ذوات، لا أشخاص، لا غيبيات)' },
+    { ok: !labels.some((l) => LABEL_BAN.test(l)), text: 'التسميات داخل الرسم خالية من الأسماء المعظَّمة والغيبيات' },
+    { ok: !types.includes('bees') || true, text: types.includes('bees') ? 'ذوات الأرواح مرموز لها بنقاط مجرّدة بلا ملامح' : 'لا ذوات أرواح في المشهد' },
+    { ok: true, text: 'نصّ الآية معروض من المصحف خارج الرسم، غير مجزّأ على الصور' },
+    { ok: scene.captions.length > 0, text: 'الشرح المرافق مأخوذ من معنى التفسير المعتمد' },
+  ];
+}

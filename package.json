@@ -1,0 +1,63 @@
+{
+  "name": "mashhadaya",
+  "version": "1.0.0",
+  "description": "مَشهَدآية — استوديو الآيات القرآنية: يحوّل معنى الآية إلى مشهد متحرك يُفهم بالنظر",
+  "author": "Mashhadaya",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "desktop": "vite build && electron .",
+    "dist:win": "vite build && electron-builder --win --x64",
+    "dist:win:portable": "vite build && node scripts/win-portable.mjs",
+    "dist:android": "vite build && bash android/build-apk.sh"
+  },
+  "build": {
+    "appId": "app.mashhadaya.studio",
+    "productName": "Mashhadaya",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "electron/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Mashhadaya-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "Mashhadaya-Portable-${version}.exe"
+    },
+    "electronLanguages": [
+      "ar",
+      "en-US"
+    ],
+    "asar": true
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
+    "@fontsource/amiri-quran": "^5.3.0",
+    "@fontsource/tajawal": "^5.3.0",
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
+    "resedit": "^3.1.1",
+    "vite": "^8.3.8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abdulrahmanahmedelabed-prog/ayat_studio.git"
+  }
+}
