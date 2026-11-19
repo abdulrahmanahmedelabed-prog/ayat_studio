@@ -2,6 +2,8 @@
 // المفردات البصرية كلها عناصر كونية (سماء، ماء، أرض، نبات...) ولا يوجد فيها
 // أي عنصر لذوات الأرواح بملامح، ولا للغيبيات. هذه هي الضمانة البنيوية الأولى.
 
+import { person, animal, birds } from './figures.js';
+
 const PI = Math.PI;
 export const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -488,6 +490,8 @@ Object.assign(DRAW, {
   },
 });
 
+Object.assign(DRAW, { person, animal, birds });
+
 export const ELEMENT_TYPES = Object.keys(DRAW);
 
 function camAt(scene, t) {
@@ -543,14 +547,15 @@ export class Player {
     if (!this.scene) return;
     if (this.t >= this.scene.duration - 0.05) this.t = 0;
     if (this.playing) return;
-    this.playing = true; this.last = performance.now(); this.raf = requestAnimationFrame(this.loop); this.onTick(this.t, this);
+    this.playing = true; this.last = performance.now(); this.raf = requestAnimationFrame(this.loop); this.hooks?.play?.(this.t); this.onTick(this.t, this);
   }
-  pause() { this.playing = false; cancelAnimationFrame(this.raf); this.onTick(this.t, this); }
+  pause() { const was = this.playing; this.playing = false; cancelAnimationFrame(this.raf); if (was) this.hooks?.pause?.(); this.onTick(this.t, this); }
   toggle() { this.playing ? this.pause() : this.play(); }
-  seek(t) { this.t = clamp(t, 0, this.scene?.duration || 0); this.draw(); this.onTick(this.t, this); }
+  seek(t) { this.t = clamp(t, 0, this.scene?.duration || 0); this.hooks?.seek?.(this.t); this.draw(); this.onTick(this.t, this); }
   loop(now) {
     if (!this.playing) return;
-    this.t += Math.min(0.1, (now - this.last) / 1000) * this.speed; this.last = now;
+    const ext = this.clock?.(); // ساعة خارجية (التلاوة) تقود المشهد حين تعمل
+    this.t = ext != null ? ext : this.t + Math.min(0.1, (now - this.last) / 1000) * this.speed; this.last = now;
     if (this.t >= this.scene.duration) { this.t = this.scene.duration; this.draw(); this.pause(); return; }
     this.draw(); this.onTick(this.t, this); this.raf = requestAnimationFrame(this.loop);
   }

@@ -24,6 +24,7 @@ const DSL = `وصف المشهد كائن JSON بهذا الشكل:
 - grain {x, size} حبة تنبت سبع سنابل | sea {y, storm} | twoSeas {barrierFrom} | ship {x0, x1} | river {foam, foamFadeFrom, foamFadeTo}
 - bees {x, y, count} خلية ونحل مرموز له بنقاط | web {windFrom, tearFrom, tearTo} بيت عنكبوت | ashes {blowFrom} رماد تذروه الريح
 - hail بَرَد | rock {washFrom, washTo} حجر أملس عليه تراب يزيله المطر | shadow {x} ظل يتبع الشمس (ضعه بعد sun و ground) | mirage {fadeFrom, fadeTo} سراب | sprout {kind: grain|stone, x} حبة أو نواة تنفلق | bitter {uprootFrom, uprootTo} شجرة حنظل تُجتث
+- (في الدرجة lenient فقط) person {look: boy|girl|man|woman|farmer, pose: stand|walk|lookup|cheer|sow|thirsty, x أو x0,x1 للمشي, size} شخصية أنمي عامة | animal {kind: sheep|cow|camel|goat, x أو x0,x1, graze} | birds {count, y, x0, x1, mode: flap|soar|both} سرب طير. لا تجعل شخصية تمثّل نبيًّا أو ملَكًا أو شخصًا بعينه.
 - orbits أفلاك الشمس والقمر | depths {y} مقطع بحر عميق تتراكم ظلماته | label {text (حتى 4 كلمات), x, y}
 لنباتٍ نامٍ منذ البداية استعمل growFrom: -6 و growTo: -1. لا توجد أنواع أخرى، ولا يمكن رسم إنسان أو حيوان أو بناء.`;
 
@@ -36,7 +37,7 @@ const AGENTS = {
   tafsir: `دورك: «جامع التفسير». يُعطى لك نص الآية ونص التفسير الميسّر لها. لخّص المعنى من النص المعطى، ولا تنسب قولًا إلى مفسّر آخر إلا إن كنت متيقنًا منه، وعلِّمه حينئذ بـ"يُراجَع". لا تجتهد في معنى جديد.
 أخرج: {"summary": "المعنى في جملتين", "points": [{"text": "...", "source": "الميسّر | ابن كثير (يُراجَع) ..."}], "kind": "kawni|mathal|qasas|hukm|ghayb|aqida", "visuals": ["المحسوسات التي ذكرتها الآية نفسها مما يصلح للرسم"], "not_visual": ["ما في الآية مما لا يُرسم ولماذا"]}`,
   review: `دورك: «المراجع الشرعي». تقرّر هل يُبنى مشهد لهذه الآية، وما قيوده، بحسب درجة التشدد المعطاة في الطلب (strictness):
-- lenient (متساهل): أجز دائمًا تقريبًا. لا ترفض إلا إذا كان المطلوب رسمه هو ذات الله نفسها. ما لا يُرسم (أشخاص، أنبياء، ملائكة، غيب) ضعه في leave_out وأجز رسم الباقي، وإن لم يبق محسوس فأجز مشهدًا عامًّا هادئًا (سماء وأرض ونور) يرافق التفسير.
+- lenient (متساهل): أجز دائمًا تقريبًا. يجوز رسم الناس والأنعام والطير شخصياتٍ عامة. لا ترفض إلا إذا كان المطلوب رسمه هو ذات الله نفسها. الأنبياء والملائكة والغيب ضعها في leave_out وأجز رسم الباقي، وإن لم يبق محسوس فأجز مشهدًا عامًّا هادئًا (سماء وأرض ونور) يرافق التفسير.
 - balanced (معتدل): أجز إذا كان في الآية محسوس كوني أو مَثَل، واترك ما لا يُرسم، وارفض إن دار المعنى كله على الغيب أو الصفات.
 - strict (متشدد): ارفض عند أي ذكر لنبي أو ملَك أو غيب أو صفة لله، ولا تجز إلا الآيات الكونية الصريحة.
 أخرج: {"verdict": "allow|reject", "reasons": ["..."], "constraints": ["قيود على الرسام"], "leave_out": ["ما لا يُرسم من الآية"]}`,
@@ -116,7 +117,7 @@ export async function runLLM({ apiKey, model = DEFAULT_MODEL, refText, verse, cl
 
   onStep('animate', 'run');
   const an = await ask(client, model, 'animate', { ...ayah, meaning: tf, reviewer_constraints: rv, composition: pt });
-  let { scene, dropped } = sanitizeScene(an);
+  let { scene, dropped } = sanitizeScene(an, strictness);
   report.paint = { elements: scene.elements.map((e) => TYPE_NAMES[e.type]), notes: pt.notes, dropped };
   report.animate = { duration: scene.duration, beats: scene.captions.length };
   onStep('animate', 'done', `${scene.duration} ثانية، ${scene.captions.length} لقطات`);

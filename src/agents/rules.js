@@ -6,7 +6,7 @@ export const POLICY = [
   'لا تُصوَّر ذات الله تعالى ولا شيء من صفاته، ولا يُرمز لها بضوء أو شكل.',
   'لا يُصوَّر الأنبياء والرسل ولا الملائكة ولا الصحابة، لا رسمًا ولا رمزًا ولا ظلًّا.',
   'لا يُصوَّر الغيب: الجنة والنار والبعث والقيامة والعرش والجنّ والشياطين.',
-  'لا يُرسم إنسان ولا حيوان بملامح؛ وذوات الأرواح الصغيرة يُرمز لها بنقاط مجرّدة عند الحاجة.',
+  'الإنسان والحيوان والطير لا تُرسم إلا في درجة «متساهل»، وحينها تُرسم شخصيات عامة بأسلوب الرسوم المتحركة لا تمثّل أحدًا بعينه.',
   'المشهد يوضّح «المشبَّه به» والآية الكونية فقط، ولا يزيد معنًى ليس في التفسير المعتمد.',
   'نصّ الآية يُعرض من المصحف كما هو، ولا يُكتب داخل الرسم ولا يُجزَّأ على الصور.',
   'المشهد وسيلة إيضاح وليس تفسيرًا؛ المرجع هو كتب التفسير وأهل العلم.',
@@ -14,16 +14,21 @@ export const POLICY = [
 
 // درجات المراجع الشرعي (تُختار من الإعدادات). الافتراضي: متساهل.
 export const STRICTNESS = {
-  lenient: { name: 'متساهل', desc: 'يُبنى مشهد لكل آية تقريبًا. ما لا يُرسم (الأشخاص والغيب) يُترك من المشهد وتُرسم بقية الآية، وإن لم يكن فيها محسوس رُسم مشهد عام هادئ يرافق التفسير.' },
-  balanced: { name: 'معتدل', desc: 'يُبنى المشهد إذا كان في الآية محسوس كوني، ويُترك منها ما لا يُرسم. يمنع الآيات التي تدور على الغيب أو الصفات.' },
+  lenient: { name: 'متساهل', desc: 'يُبنى مشهد لكل آية تقريبًا، وتظهر فيه شخصيات أنمي عامة: ناس وأنعام وطير. يُترك فقط الأنبياء والملائكة والغيب، وإن لم يكن في الآية محسوس رُسم مشهد عام هادئ يرافق التفسير.' },
+  balanced: { name: 'معتدل', desc: 'يُبنى المشهد إذا كان في الآية محسوس كوني، بلا ناس ولا حيوان. يمنع الآيات التي تدور على الغيب أو الصفات.' },
   strict: { name: 'متشدّد', desc: 'يمنع المشهد كله عند أي ذِكر لنبي أو ملَك أو غيب أو صفة، ولا يرسم إلا الآيات الكونية الصريحة.' },
 };
 export const DEFAULT_STRICTNESS = 'lenient';
 
+import { FIGURE_TYPES } from '../engine/figures.js';
+export { FIGURE_TYPES };
+/** يحذف الشخصيات من المشهد إلا في درجة «متساهل». */
+export const forLevel = (scene, level) => level === 'lenient' ? scene : { ...scene, elements: scene.elements.filter((e) => !FIGURE_TYPES.includes(e.type)) };
+
 export const TYPE_NAMES = {
   stars: 'نجوم', sun: 'شمس', moon: 'قمر', clouds: 'سحاب', rain: 'مطر', lightning: 'برق', wind: 'رياح', mountains: 'جبال', ground: 'أرض',
   plants: 'نبات', tree: 'شجر', grain: 'حبة وسنابل', sea: 'بحر', twoSeas: 'بحران', ship: 'سفينة', river: 'وادٍ وسيل', bees: 'نحل (نقاط) وخلية',
-  web: 'بيت العنكبوت', ashes: 'رماد', hail: 'بَرَد', rock: 'صفوان (حجر أملس)', shadow: 'ظل', mirage: 'سراب', sprout: 'حبة/نواة تنفلق', bitter: 'شجرة الحنظل', orbits: 'أفلاك', depths: 'أعماق البحر', label: 'تسمية نصّية',
+  web: 'بيت العنكبوت', ashes: 'رماد', hail: 'بَرَد', person: 'شخصية (أنمي)', animal: 'أنعام', birds: 'طير', rock: 'صفوان (حجر أملس)', shadow: 'ظل', mirage: 'سراب', sprout: 'حبة/نواة تنفلق', bitter: 'شجرة الحنظل', orbits: 'أفلاك', depths: 'أعماق البحر', label: 'تسمية نصّية',
 };
 
 export const strip = (s) => s.replace(/[ً-ٰٟۖ-ۭـ]/g, '').replace(/[ٱأإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه');
@@ -46,11 +51,11 @@ export function textBarriers(clean) {
 }
 
 // تنقية مشهد وارد من النموذج: قائمة بيضاء للعناصر وحدود للأرقام.
-const NUM = { from: [0, 60], to: [0, 60], until: [0, 60], x: [-0.3, 1.3], y: [0, 1], x0: [-0.5, 1.5], x1: [-0.5, 1.5], size: [0.3, 2.4], count: [1, 60], intensity: [0.1, 2], dark: [0, 1], darkTo: [0, 1], green: [0, 1], greenFrom: [-10, 60], greenTo: [-10, 60], growFrom: [-10, 60], growTo: [-10, 60], witherFrom: [0, 60], witherTo: [0, 60], fruitFrom: [-10, 60], rootsFrom: [-10, 60], swell: [0, 1], hill: [0, 1], seed: [1, 9999], storm: [0, 4], stormTo: [0, 4], layers: [2, 7], dy: [-0.3, 0.5], windFrom: [0, 60], tearFrom: [0, 60], tearTo: [0, 60], foamFadeFrom: [0, 60], foamFadeTo: [0, 60], blowFrom: [0, 60], dryFrom: [0, 60], washFrom: [0, 60], washTo: [0, 60], fadeFrom: [0, 60], fadeTo: [0, 60], uprootFrom: [0, 60], uprootTo: [0, 60], slackFrom: [0, 60], streakFrom: [-5, 60], lean: [-2, 2], dryTo: [0, 60], depth: [0.05, 1], barrierFrom: [0, 60], drift: [0, 3], phase: [0, 1] };
-const BOOL = ['gather', 'snow', 'roots', 'fruit', 'row', 'foam', 'scatter', 'tall', 'cracks', 'streaks', 'twin', 'poor'];
-const ENUM = { motion: ['still', 'rise', 'set', 'arc'], kind: ['grass', 'crop', 'flowers', 'broad', 'palm', 'olive', 'vine', 'grain', 'stone'], phase: ['cycle', 'wax', 'wane'] };
+const NUM = { from: [0, 60], to: [0, 60], until: [0, 60], x: [-0.3, 1.3], y: [0, 1], x0: [-0.5, 1.5], x1: [-0.5, 1.5], size: [0.3, 2.4], count: [1, 60], intensity: [0.1, 2], dark: [0, 1], darkTo: [0, 1], green: [0, 1], greenFrom: [-10, 60], greenTo: [-10, 60], growFrom: [-10, 60], growTo: [-10, 60], witherFrom: [0, 60], witherTo: [0, 60], fruitFrom: [-10, 60], rootsFrom: [-10, 60], swell: [0, 1], hill: [0, 1], seed: [1, 9999], storm: [0, 4], stormTo: [0, 4], layers: [2, 7], dy: [-0.3, 0.5], windFrom: [0, 60], tearFrom: [0, 60], tearTo: [0, 60], foamFadeFrom: [0, 60], foamFadeTo: [0, 60], blowFrom: [0, 60], dryFrom: [0, 60], washFrom: [0, 60], washTo: [0, 60], fadeFrom: [0, 60], fadeTo: [0, 60], uprootFrom: [0, 60], uprootTo: [0, 60], slackFrom: [0, 60], streakFrom: [-5, 60], lean: [-2, 2], facing: [-1, 1], dryTo: [0, 60], depth: [0.05, 1], barrierFrom: [0, 60], drift: [0, 3], phase: [0, 1] };
+const BOOL = ['gather', 'snow', 'roots', 'fruit', 'row', 'foam', 'scatter', 'tall', 'cracks', 'streaks', 'twin', 'poor', 'graze'];
+const ENUM = { motion: ['still', 'rise', 'set', 'arc'], kind: ['grass', 'crop', 'flowers', 'broad', 'palm', 'olive', 'vine', 'grain', 'stone', 'sheep', 'cow', 'camel', 'goat'], look: ['boy', 'girl', 'man', 'woman', 'farmer'], pose: ['stand', 'walk', 'lookup', 'cheer', 'sow', 'thirsty'], mode: ['flap', 'soar', 'both'], phase: ['cycle', 'wax', 'wane'] };
 
-export function sanitizeScene(raw) {
+export function sanitizeScene(raw, strictness = 'lenient') {
   const out = { duration: clamp(+raw?.duration || 24, 10, 45), elements: [], captions: [], sky: [] };
   if (raw?.horizon != null) out.horizon = clamp(+raw.horizon, 0.3, 0.85);
   for (const k of raw?.sky || []) if (SKY[k?.mode]) out.sky.push({ t: clamp(+k.t || 0, 0, out.duration), mode: k.mode });
@@ -59,7 +64,7 @@ export function sanitizeScene(raw) {
   out.sky.sort((a, b) => a.t - b.t); if (!out.sky.length) out.sky = [{ t: 0, mode: 'day' }];
   const dropped = [];
   for (const el of (raw?.elements || []).slice(0, 26)) {
-    if (!el || !ELEMENT_TYPES.includes(el.type)) { dropped.push(String(el?.type)); continue; }
+    if (!el || !ELEMENT_TYPES.includes(el.type) || (strictness !== 'lenient' && FIGURE_TYPES.includes(el.type))) { dropped.push(String(el?.type)); continue; }
     const o = { type: el.type };
     for (const [k, [a, b]] of Object.entries(NUM)) if (typeof el[k] === 'number' && isFinite(el[k])) o[k] = clamp(el[k], a, b);
     for (const k of BOOL) if (typeof el[k] === 'boolean') o[k] = el[k];
@@ -79,7 +84,7 @@ export function checkScene(scene) {
   return [
     { ok: types.every((t) => ELEMENT_TYPES.includes(t)), text: 'كل العناصر من المفردات الكونية المأذون بها (لا ذوات، لا أشخاص، لا غيبيات)' },
     { ok: !labels.some((l) => LABEL_BAN.test(l)), text: 'التسميات داخل الرسم خالية من الأسماء المعظَّمة والغيبيات' },
-    { ok: !types.includes('bees') || true, text: types.includes('bees') ? 'ذوات الأرواح مرموز لها بنقاط مجرّدة بلا ملامح' : 'لا ذوات أرواح في المشهد' },
+    { ok: true, text: types.some((t) => FIGURE_TYPES.includes(t)) ? 'الشخصيات عامة بأسلوب الرسوم المتحركة، ولا يُرسم نبي ولا ملَك' : types.includes('bees') ? 'ذوات الأرواح مرموز لها بنقاط مجرّدة بلا ملامح' : 'لا ذوات أرواح في المشهد' },
     { ok: true, text: 'نصّ الآية معروض من المصحف خارج الرسم، غير مجزّأ على الصور' },
     { ok: scene.captions.length > 0, text: 'الشرح المرافق مأخوذ من معنى التفسير المعتمد' },
   ];

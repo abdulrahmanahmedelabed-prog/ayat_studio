@@ -558,6 +558,63 @@ LIBRARY.push(
   },
 );
 
+// ───────── مشاهد الإصدار ١٫٤ (فيها شخصيات؛ تظهر في درجة «متساهل» فقط) ─────────
+LIBRARY.push(
+  {
+    id: 'birds-held', title: 'الطير صافّاتٍ ويقبضن', cat: 'آيات كونية', ref: { s: 67, from: 19, to: 19 }, duration: 24, needsFigures: true,
+    sky: [{ t: 0, mode: 'day' }, { t: 16, mode: 'day' }, { t: 22, mode: 'dusk' }],
+    camera: [{ t: 0, zoom: 1 }, { t: 5, zoom: 1.35, x: 0.55, y: 0.3 }, { t: 15, zoom: 1.35, x: 0.5, y: 0.3 }, { t: 19, zoom: 1 }],
+    elements: [
+      { type: 'sun', x: 0.82, y: 0.14 }, { type: 'clouds', count: 4, y: 0.13, size: 0.8, drift: 0.8 }, { type: 'mountains', count: 3, seed: 31, size: 0.6 },
+      { type: 'ground', green: 0.6, cracks: false }, { type: 'plants', kind: 'grass', ...pre, count: 24 },
+      { type: 'birds', count: 9, y: 0.27, x0: -0.15, x1: 1.1, mode: 'soar', from: 0, to: 11, until: 11.5, size: 1.5 },
+      { type: 'birds', count: 9, y: 0.27, x0: 1.1, x1: -0.15, mode: 'flap', from: 10.5, to: 22, size: 1.5, seed: 4 },
+      { type: 'person', look: 'boy', x: 0.3, pose: 'lookup', seed: 1 }, { type: 'person', look: 'girl', x: 0.4, pose: 'lookup', seed: 3 },
+    ],
+    captions: [
+      { t: 0, text: 'انظر إلى الطير فوقك', q: 'أولم يروا إلى الطير فوقهم' }, { t: 4, text: 'باسطاتٍ أجنحتها في الهواء', q: 'صافات' },
+      { t: 11, text: 'ويضممنها إلى جنوبها أحيانًا', q: 'ويقبضن' }, { t: 16, text: 'ما يحفظها من الوقوع إلا الرحمن', q: 'ما يمسكهن إلا الرحمن' },
+      { t: 20.5, text: 'إنه بكل شيء بصير', q: 'إنه بكل شيء بصير' },
+    ],
+    omitted: ['الناظرون إلى الطير شخصيات عامة لا تمثّل أحدًا.'],
+  },
+  {
+    id: 'cattle', title: 'والأنعام خلقها لكم', cat: 'آيات كونية', ref: { s: 16, from: 5, to: 6 }, duration: 28, needsFigures: true, horizon: 0.62,
+    sky: [{ t: 0, mode: 'dawn' }, { t: 7, mode: 'day' }, { t: 18, mode: 'day' }, { t: 24, mode: 'dusk' }],
+    elements: [
+      { type: 'sun', motion: 'arc', x0: 0.1, x1: 0.9, to: 28 }, { type: 'mountains', count: 3, seed: 44, size: 0.6 }, { type: 'ground', green: 0.75, cracks: false },
+      { type: 'plants', kind: 'grass', ...pre, count: 30 },
+      { type: 'animal', kind: 'camel', x: 0.18, size: 1.1, until: 8 }, { type: 'animal', kind: 'cow', x: 0.42, until: 8 }, { type: 'animal', kind: 'sheep', x: 0.64, until: 8 }, { type: 'animal', kind: 'goat', x: 0.8, size: 0.9, until: 8 },
+      { type: 'animal', kind: 'sheep', x0: 0.05, x1: 0.55, from: 8, to: 15, until: 19, seed: 1 }, { type: 'animal', kind: 'sheep', x0: -0.05, x1: 0.45, from: 8.4, to: 15.4, until: 19, size: 0.85, seed: 2 },
+      { type: 'animal', kind: 'camel', x0: -0.15, x1: 0.3, from: 8.8, to: 15.8, until: 19, seed: 3 }, { type: 'person', look: 'man', x0: -0.2, x1: 0.2, from: 9, to: 16, until: 19, seed: 2 },
+      { type: 'animal', kind: 'sheep', x0: 0.55, x1: 1.15, from: 19, to: 27, seed: 4 }, { type: 'animal', kind: 'sheep', x0: 0.45, x1: 1.05, from: 19.4, to: 27.4, size: 0.85, seed: 5 },
+      { type: 'animal', kind: 'camel', x0: 0.3, x1: 0.92, from: 19.8, to: 27.8, seed: 6 }, { type: 'person', look: 'man', x0: 0.2, x1: 0.82, from: 20, to: 28, seed: 7 },
+    ],
+    captions: [
+      { t: 0, text: 'الأنعام من الإبل والبقر والغنم خلقها الله لكم', q: 'والأنعام خلقها لكم' },
+      { t: 4.5, text: 'في أصوافها وأوبارها دفء، ومنافع في ألبانها وجلودها وركوبها', q: 'فيها دفء ومنافع' },
+      { t: 9, text: 'ولكم فيها زينة حين تُخرجونها للمرعى صباحًا', q: 'وحين تسرحون' },
+      { t: 19.5, text: 'وحين تردّونها إلى منازلها في المساء', q: 'حين تريحون' },
+    ],
+    omitted: ['الراعي شخصية عامة لا تمثّل أحدًا.'],
+  },
+);
+
+// شخصيات تُضاف إلى مشاهد سابقة في درجة «متساهل» (تُحذف آليًا في الدرجات الأخرى)
+const FIG = {
+  'rain-revival': [{ type: 'person', look: 'man', x: 0.4, pose: 'cheer', from: 13, seed: 1 }, { type: 'person', look: 'girl', x: 0.5, pose: 'cheer', from: 13.5, seed: 4 }, { type: 'birds', count: 6, y: 0.2, x0: -0.1, x1: 1.1, from: 21, to: 30, mode: 'both' }],
+  'winds-clouds': [{ type: 'person', look: 'farmer', x: 0.3, pose: 'stand', seed: 2, until: 14 }, { type: 'person', look: 'farmer', x: 0.3, pose: 'cheer', from: 14, seed: 2 }, { type: 'person', look: 'boy', x: 0.4, pose: 'cheer', from: 15, seed: 5 }],
+  mirage: [{ type: 'person', look: 'man', x0: 0.08, x1: 0.42, pose: 'thirsty', from: 3, to: 17, size: 0.9 }],
+  harvest: [{ type: 'person', look: 'farmer', x: 0.22, pose: 'sow', from: 0, until: 7 }],
+  food: [{ type: 'person', look: 'boy', x: 0.2, pose: 'lookup', from: 18 }, { type: 'animal', kind: 'sheep', x: 0.64, graze: true, from: 29 }, { type: 'animal', kind: 'cow', x: 0.42, graze: true, from: 29.5, size: 0.95 }],
+  'one-water': [{ type: 'animal', kind: 'sheep', x: 0.66, graze: true, from: 3 }, { type: 'animal', kind: 'goat', x: 0.36, graze: true, from: 3.5, size: 0.85 }],
+  'two-signs': [{ type: 'person', look: 'farmer', x0: 0.05, x1: 0.55, from: 15, to: 22, seed: 3 }],
+  'pollinating-winds': [{ type: 'animal', kind: 'camel', x: 0.55, from: 15.5, graze: true }, { type: 'animal', kind: 'sheep', x: 0.4, from: 16, graze: true }],
+  'dawn-split': [{ type: 'birds', count: 5, y: 0.25, x0: -0.1, x1: 1.1, from: 8, to: 16, mode: 'flap' }],
+  'ships-still': [{ type: 'birds', count: 4, y: 0.2, x0: 1.1, x1: -0.1, from: 2, to: 20, mode: 'soar' }],
+};
+for (const s of LIBRARY) if (FIG[s.id]) { s.elements.push(...FIG[s.id]); s.omittedFigures = ['الأشخاص والأنعام والطير في المشهد شخصيات عامة لا تمثّل أحدًا بعينه.']; }
+
 // اللفظ القرآني المقابل لكل لقطة في مشاهد الإصدار الأول (بالرسم الإملائي؛ يُطابَق آليًا مع المصحف)
 const Q = {
   'rain-revival': ['لبلد ميت', 'يرسل الرياح بشرا بين يدي رحمته', 'أقلت سحابا ثقالا', 'سقناه لبلد ميت', 'فأنزلنا به الماء', 'فأخرجنا به من كل الثمرات', 'كذلك نخرج الموتى لعلكم تذكرون'],

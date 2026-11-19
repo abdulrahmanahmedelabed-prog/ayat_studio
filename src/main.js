@@ -5,7 +5,8 @@ import '@fontsource/tajawal/arabic-700.css';
 import './styles.css';
 import { Player, drawScene } from './engine/render.js';
 import { LIBRARY } from './scenes/library.js';
-import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS } from './agents/rules.js';
+import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel } from './agents/rules.js';
+import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
 import { runOffline } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
 import { strip } from './agents/rules.js';
@@ -38,6 +39,10 @@ async function ayat(ref) {
     clean: rows.map((r) => r.clean).join(' '), verse: rows.map((r) => r.text).join(' '), tafsir: [...new Set(rows.map((r) => r.tafsir))].join(' '),
   };
 }
+
+const level = () => (STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS);
+const reciteOn = () => store.get('recite', '1') === '1';
+const reciter = () => (RECITERS[store.get('reciter')] ? store.get('reciter') : DEFAULT_RECITER);
 
 // ───────── المشغّل ─────────
 let current = null; // المشغّل الظاهر حاليًا
@@ -80,7 +85,7 @@ function reportBlock(rep, seek) {
       rep.timeline ? h('ol', { class: 'timeline' }, rep.timeline.map((c) => h('li', {}, h('button', { onclick: () => seek?.(c.t + 0.05), 'aria-label': 'انتقل إلى هذه اللقطة' }, h('time', {}, AR(Math.round(c.t)) + 'ث'), c.text)))) : null));
 }
 
-function playerView({ title, scene, A, report }) {
+function playerView({ title, scene, A, report, ref }) {
   const canvas = h('canvas', { class: 'stage', role: 'img', 'aria-label': 'مشهد متحرك: ' + title });
   const cap = h('div', { class: 'caption', 'aria-live': 'polite' });
   const bar = h('input', { type: 'range', min: 0, max: scene.duration, step: 0.05, value: 0, 'aria-label': 'موضع المشهد' });
@@ -95,38 +100,67 @@ function playerView({ title, scene, A, report }) {
     let c = null; for (const x of scene.captions) if (x.t <= t) c = x;
     if (c !== lastCap) { lastCap = c; cap.textContent = c ? c.text : ''; cap.classList.remove('in'); void cap.offsetWidth; if (c) cap.classList.add('in'); verse.mark(c?.q); }
   });
+  // التلاوة: حين تعمل تقود زمن المشهد، فيمتد المشهد على طول التلاوة
+  const status = h('p', { class: 'note audio-status', role: 'status' });
+  const rc = ref && reciteOn() ? new Recitation(ref, reciter()) : null;
+  let audioOk = !!rc;
+  if (rc) {
+    status.textContent = `التلاوة: ${RECITERS[reciter()].name} — جارٍ التحميل…`;
+    rc.load().then(() => { status.textContent = `التلاوة: ${RECITERS[reciter()].name}`; if (p.playing) { rc.seekFrac(p.t / scene.duration); rc.play().catch(blocked); } })
+      .catch(() => { audioOk = false; status.textContent = 'تعذّر تحميل التلاوة (تحتاج اتصالًا بالإنترنت). يعمل المشهد دون صوت.'; });
+    rc.onend = () => { p.seek(scene.duration); p.pause(); };
+  }
+  function blocked() { p.pause(); status.textContent = 'اضغط زر التشغيل لسماع التلاوة مع المشهد.'; }
+  p.clock = () => (rc && audioOk && rc.total && rc.playing ? rc.progress * scene.duration : null);
+  p.hooks = {
+    play: (t) => { if (rc && audioOk && rc.total) { rc.seekFrac(t / scene.duration); rc.play().catch(blocked); } },
+    pause: () => rc?.pause(),
+    seek: (t) => { if (rc && audioOk && rc.total) rc.seekFrac(t / scene.duration); },
+  };
+  p.cleanup = () => rc?.destroy();
   bar.addEventListener('input', () => p.seek(+bar.value));
   playBtn.addEventListener('click', () => p.toggle());
-  const speed = h('button', { class: 'ghost', onclick: () => { p.speed = p.speed === 1 ? 0.5 : 1; speed.textContent = p.speed === 1 ? 'سرعة ×١' : 'سرعة ×½'; } }, 'سرعة ×١');
+  const speed = h('button', { class: 'ghost', onclick: () => { p.speed = p.speed === 1 ? 0.5 : 1; rc?.setRate(p.speed); speed.textContent = p.speed === 1 ? 'سرعة ×١' : 'سرعة ×½'; } }, 'سرعة ×١');
   const wrap = h('div', { class: 'stagewrap' }, canvas, cap);
   const canRec = typeof MediaRecorder !== 'undefined' && !!canvas.captureStream && !/; wv\)/.test(navigator.userAgent);
-  const rec = canRec ? h('button', { class: 'ghost', onclick: () => recordVideo(p, scene, title, rec) }, 'حفظ فيديو') : null;
+  const rec = canRec ? h('button', { class: 'ghost', onclick: () => recordVideo(p, scene, title, rec, rc && audioOk ? rc : null, status) }, 'حفظ فيديو') : null;
   const full = h('button', { class: 'ghost', onclick: () => (document.fullscreenElement ? document.exitFullscreen() : wrap.requestFullscreen?.()) }, 'ملء الشاشة');
   canvas.addEventListener('click', () => p.toggle());
-  current = p;
-  queueMicrotask(() => { p.setScene(scene); setTimeout(() => p.play(), 350); });
+  queueMicrotask(() => { current = p; p.setScene(scene); setTimeout(() => p.play(), 350); });
   return h('div', { class: 'player' },
     h('div', { class: 'col-stage' }, wrap, h('div', { class: 'controls' }, playBtn, bar, time, speed, full, rec),
-      h('p', { class: 'note' }, 'المشهد وسيلة إيضاح للمعنى وليس تفسيرًا. المرجع هو التفسير أدناه وأهل العلم.')),
+      rc ? status : null, h('p', { class: 'note' }, 'المشهد وسيلة إيضاح للمعنى وليس تفسيرًا. المرجع هو التفسير أدناه وأهل العلم.')),
     h('div', { class: 'col-text' }, h('h2', {}, title), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, tafsirBlock(A), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
 }
 
 // يسجّل المشهد كاملًا فيديو WebM مع الشروح مرسومة عليه، ثم ينزّله.
-async function recordVideo(p, scene, title, btn) {
+async function recordVideo(p, scene, title, btn, rc, status) {
   if (btn.disabled) return;
   const W = 1280, H = 720, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d'), stream = cv.captureStream(30);
-  const type = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find((t) => MediaRecorder.isTypeSupported(t));
+  // صوت التلاوة في الفيديو: يُجلب ويُفكّ، ثم يُدمج مع الصورة. إن رفض الخادم ذلك يُسجَّل الفيديو صامتًا.
+  let total = scene.duration, actx = null, src = null;
+  if (rc) {
+    btn.disabled = true; btn.textContent = 'تحضير التلاوة…';
+    try {
+      actx = new AudioContext(); const buf = await rc.decode(actx);
+      src = actx.createBufferSource(); src.buffer = buf; const dest = actx.createMediaStreamDestination(); src.connect(dest);
+      stream.addTrack(dest.stream.getAudioTracks()[0]); total = buf.duration;
+    } catch { actx?.close(); actx = null; src = null; if (status) status.textContent = 'تعذّر إدخال التلاوة في الفيديو من هذا الخادم، فسُجّل الفيديو دون صوت.'; }
+    btn.disabled = false;
+  }
+  const withAudio = !!src;
+  const type = (withAudio ? ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'] : ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']).find((t) => MediaRecorder.isTypeSupported(t));
   if (!type) { btn.textContent = 'التسجيل غير مدعوم'; return; }
   const mr = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6e6 }), chunks = [];
   mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const label = btn.textContent; btn.disabled = true; p.pause();
   const done = new Promise((r) => (mr.onstop = r));
-  mr.start(500);
+  mr.start(500); src?.start();
   const t0 = performance.now();
   await new Promise((resolve) => {
     const frame = () => {
-      const t = Math.min(scene.duration, (performance.now() - t0) / 1000);
+      const el = Math.min(total, (performance.now() - t0) / 1000), t = (el / total) * scene.duration;
       drawScene(ctx, W, H, scene, t);
       let c = null; for (const x of scene.captions) if (x.t <= t) c = x;
       if (c) {
@@ -137,11 +171,11 @@ async function recordVideo(p, scene, title, btn) {
       }
       ctx.font = '700 22px Tajawal, sans-serif'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillText('مَشهَدآية', W - 28, 42);
       btn.textContent = `يسجّل… ${AR(Math.round((t / scene.duration) * 100))}٪`;
-      t < scene.duration ? requestAnimationFrame(frame) : resolve();
+      el < total ? requestAnimationFrame(frame) : resolve();
     };
     frame();
   });
-  mr.stop(); await done;
+  mr.stop(); await done; actx?.close();
   const blob = new Blob(chunks, { type }), a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = `${title.replace(/[\\/:*?"<>|]/g, '')}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -149,17 +183,18 @@ async function recordVideo(p, scene, title, btn) {
 }
 
 function curatedReport(item, A) {
-  const checks = checkScene(item);
+  const checks = checkScene(item), figs = level() === 'lenient' && item.omittedFigures;
+  const omitted = figs ? [...(item.omitted || []).filter((o) => !/(الظمآن|الناس|الإنسان|الأنعام|الزُّرّاع|العباد|الدوابّ)/.test(o)), ...item.omittedFigures] : item.omitted;
   return {
     mode: 'curated', tafsir: { source: 'التفسير الميسّر', visuals: [...new Set(item.elements.filter((e) => e.type !== 'label').map((e) => TYPE_NAMES[e.type]))] },
-    review: { verdict: 'approve', checks, omitted: item.omitted }, paint: { elements: item.elements.map((e) => TYPE_NAMES[e.type]) },
+    review: { verdict: 'approve', checks, omitted }, paint: { elements: item.elements.map((e) => TYPE_NAMES[e.type]) },
     animate: { duration: item.duration, beats: item.captions.length }, timeline: item.captions,
   };
 }
 
 // ───────── الصفحات ─────────
 const view = $('#view');
-function mount(...nodes) { current?.destroy(); current = null; view.replaceChildren(...nodes); view.scrollTo?.(0, 0); window.scrollTo(0, 0); }
+function mount(...nodes) { current?.cleanup?.(); current?.destroy(); current = null; view.replaceChildren(...nodes); view.scrollTo?.(0, 0); window.scrollTo(0, 0); }
 
 function pageLibrary() {
   const cats = [...new Set(LIBRARY.map((x) => x.cat))];
@@ -167,7 +202,7 @@ function pageLibrary() {
     h('div', { class: 'hero' }, h('h1', {}, 'افهم الآية بالنظر'),
       h('p', {}, 'كل مشهد يحوّل معنى آية كونية أو مَثَل قرآني إلى حركة صامتة تُفهم دون شرح طويل، مع نصّ الآية والتفسير الميسّر، وتقرير يبيّن ما رُسم وما تُرك ولماذا.')),
     ...cats.map((cat) => h('section', {}, h('h2', { class: 'cat' }, cat),
-      h('div', { class: 'grid' }, LIBRARY.filter((x) => x.cat === cat).map((item) => {
+      h('div', { class: 'grid' }, LIBRARY.filter((x) => x.cat === cat && (!x.needsFigures || level() === 'lenient')).map((item) => forLevel(item, level())).map((item) => {
         const cv = h('canvas', { width: 480, height: 270 });
         requestAnimationFrame(() => drawScene(cv.getContext('2d'), 480, 270, item, item.duration * (item.thumb ?? 0.78)));
         const meta = h('small', {}, '…');
@@ -179,8 +214,8 @@ function pageLibrary() {
 async function pageScene(id) {
   const item = LIBRARY.find((x) => x.id === id); if (!item) return go('library');
   mount(h('p', { class: 'loading' }, 'جارٍ التحميل…'));
-  const A = await ayat(item.ref);
-  mount(h('div', { class: 'page' }, h('button', { class: 'back', onclick: () => go('library') }, '→ المكتبة'), playerView({ title: item.title, scene: item, A, report: curatedReport(item, A) })));
+  const A = await ayat(item.ref), sc = forLevel(item, level());
+  mount(h('div', { class: 'page' }, h('button', { class: 'back', onclick: () => go('library') }, '→ المكتبة'), playerView({ title: item.title, scene: sc, A, report: curatedReport(sc, A), ref: item.ref })));
 }
 
 const STEPS = ['tafsir', 'review', 'paint', 'animate', 'final'];
@@ -209,7 +244,7 @@ async function pageStudio() {
       let res;
       if (key) { const { runLLM } = await import('./agents/llm.js'); res = await runLLM({ apiKey: key, model: store.get('model', 'claude-opus-5-5'), refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
       else res = await runOffline({ clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep);
-      if (res.ok) { res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report })); }
+      if (res.ok) { res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report, ref })); }
       else out.replaceChildren(h('div', { class: 'rejected' }, h('h2', {}, 'هذه الآية لا يُبنى لها مشهد'),
         h('p', {}, 'قرّر المراجع الشرعي أن تصويرها لا يصحّ. تُقرأ وتُفهم من التفسير:'), h('ul', {}, (res.report.review?.reasons || []).map((r) => h('li', {}, r))), verseBlock(A), tafsirBlock(A)));
       if (made) out.prepend(h('button', { class: 'hint', onclick: () => go('scene/' + made.id) }, 'لهذه الآية مشهد مُعدّ ومراجَع يدويًا في المكتبة ←'));
@@ -248,17 +283,23 @@ function pageAbout() {
   const key = h('input', { type: 'password', value: store.get('key'), placeholder: 'sk-ant-…', autocomplete: 'off', dir: 'ltr', 'aria-label': 'مفتاح Anthropic API' });
   const model = h('select', { 'aria-label': 'النموذج' }, [['claude-opus-5-5', 'Claude Opus 5.5 (الافتراضي)'], ['claude-fable-5-2', 'Claude Fable 5.2 (الأقدر)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (أسرع)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (الأرخص)']].map(([v, t]) => h('option', { value: v }, t)));
   model.value = store.get('model', 'claude-opus-5-5');
-  const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' });
+  const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' }), rcMsg = h('span', { class: 'saved', role: 'status' });
   mount(h('div', { class: 'page narrow' },
     h('div', { class: 'hero' }, h('h1', {}, 'الضوابط والإعدادات')),
     h('section', { class: 'panel' }, h('h3', {}, 'درجة المراجع الشرعي'),
-      h('p', {}, 'تحدد متى يمنع المراجعُ المشهد. الرسم نفسه لا يتضمن في كل الدرجات إنسانًا ولا حيوانًا بملامح ولا غيبًا، لأن المحرّك لا يملك عناصر لها.'),
+      h('p', {}, 'تحدد متى يمنع المراجعُ المشهد، وهل تظهر فيه شخصيات من الناس والأنعام والطير. في كل الدرجات لا يُرسم نبي ولا ملَك ولا غيب.'),
       h('div', { class: 'levels', role: 'radiogroup', 'aria-label': 'درجة المراجع الشرعي' }, Object.entries(STRICTNESS).map(([id, L]) => {
         const cur = (STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS) === id;
         return h('label', { class: 'level' }, h('input', { type: 'radio', name: 'strict', id: 'strict-' + id, value: id, checked: cur, onchange: () => { store.set('strict', id); lvlMsg.textContent = 'حُفظ: ' + L.name; } }), h('span', {}, h('b', {}, L.name), h('small', {}, L.desc)));
       })), lvlMsg),
     h('section', { class: 'panel' }, h('h3', {}, 'الضوابط الشرعية للمشاهد'), h('ol', { class: 'policy' }, POLICY.map((p) => h('li', {}, p))),
-      h('p', { class: 'src' }, 'هذه الضوابط مبنية في المحرّك نفسه: مفردات الرسم لا تحتوي أصلًا على إنسان ولا حيوان بملامح ولا غيبيات، ثم يُفحص كل مشهد آليًا قبل عرضه. ومع ذلك فالتطبيق جهد بشري وآلي يحتمل الخطأ، ويُستحسن عرض المشاهد المولَّدة على طالب علم قبل نشرها أو تعليمها.')),
+      h('p', { class: 'src' }, 'هذه الضوابط مبنية في المحرّك: لا يملك عناصر للغيب، والشخصيات العامة تُحذف آليًا خارج درجة «متساهل»، ثم يُفحص كل مشهد قبل عرضه. ومع ذلك فالتطبيق جهد بشري وآلي يحتمل الخطأ، ويُستحسن عرض المشاهد المولَّدة على طالب علم قبل نشرها أو تعليمها.')),
+    h('section', { class: 'panel' }, h('h3', {}, 'التلاوة'),
+      h('p', {}, 'تُسمع الآية مرتّلة مع المشهد، ويمتد المشهد على طول التلاوة، وتدخل التلاوة في الفيديو المحفوظ. تحتاج اتصالًا بالإنترنت لأن ملفات الصوت تُبثّ ولا تُخزَّن في التطبيق.'),
+      h('div', { class: 'form' },
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 'recite', checked: reciteOn(), onchange: (ev) => { store.set('recite', ev.target.checked ? '1' : '0'); rcMsg.textContent = ev.target.checked ? 'التلاوة مفعّلة.' : 'التلاوة متوقفة.'; } }), 'تشغيل التلاوة مع المشهد'),
+        h('label', {}, 'القارئ', h('select', { id: 'reciter', onchange: (ev) => { store.set('reciter', ev.target.value); rcMsg.textContent = 'حُفظ القارئ.'; } }, Object.entries(RECITERS).map(([id, r]) => h('option', { value: id, selected: id === reciter() }, r.name)))),
+        rcMsg)),
     h('section', { class: 'panel' }, h('h3', {}, 'وكلاء الذكاء الاصطناعي (اختياري)'),
       h('p', {}, 'المكتبة والوكلاء دون اتصال يعملون بلا إنترنت. لتوليد مشاهد أدقّ لأي آية أدخل مفتاح Anthropic API الخاص بك. يُحفظ المفتاح على هذا الجهاز فقط ولا يُرسل إلا إلى api.anthropic.com، وتُحتسب تكلفة الاستخدام على حسابك.'),
       h('div', { class: 'form' }, h('label', {}, 'مفتاح API', key), h('label', {}, 'النموذج', model),
@@ -269,7 +310,7 @@ function pageAbout() {
       h('li', {}, 'التفسير: التفسير الميسّر، مجمع الملك فهد لطباعة المصحف الشريف (عبر QUL / Tarteel).'),
       h('li', {}, 'الخطوط: Amiri Quran و Tajawal برخصة SIL OFL.'),
       h('li', {}, 'شروح المشاهد صياغة مختصرة لمعنى التفسير الميسّر، وليست نصًّا قرآنيًا ولا تفسيرًا مستقلًا.'))),
-    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ١٫٣٫٠')));
+    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ١٫٤٫٠')));
 }
 
 // ───────── التنقّل ─────────

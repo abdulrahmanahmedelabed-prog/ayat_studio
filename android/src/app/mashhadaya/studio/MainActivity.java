@@ -47,6 +47,7 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        s.setMediaPlaybackRequiresUserGesture(false); // لتبدأ التلاوة مع المشهد مباشرة
         s.setAllowFileAccess(false);
         s.setAllowContentAccess(false);
         web.setWebViewClient(new WebViewClient() {

@@ -22,6 +22,9 @@ export const CONCEPTS = [
   { id: 'trees', re: w('الشجر', 'شجر', 'شجرة', 'النخل', 'النخيل', 'نخلا', 'نخيل', 'الزيتون', 'زيتونا', 'الأعناب', 'أعناب', 'عنبا', 'الرمان', 'الثمرات', 'ثمرات', 'فاكهة', 'جنات', 'حدائق'), cap: 'الشجر والثمار' },
   { id: 'bees', re: w('النحل'), cap: 'النحل وبيوتها' },
   { id: 'web', re: w('العنكبوت'), cap: 'بيت العنكبوت' },
+  { id: 'birds', re: w('الطير', 'طيرا', 'طائر', 'صافات'), cap: 'الطير في جوّ السماء', fig: true },
+  { id: 'cattle', re: w('الأنعام', 'أنعامكم', 'الإبل', 'البقر', 'بقرة', 'الغنم', 'الضأن', 'المعز', 'تسيمون', 'دابة', 'الدواب'), cap: 'الأنعام', fig: true },
+  { id: 'people', re: w('الناس', 'الإنسان', 'للناس', 'عباده', 'لعباده', 'للعباد'), cap: 'الناس', fig: true },
   { id: 'earth', re: w('الأرض'), cap: 'الأرض' },
 ];
 
@@ -31,7 +34,7 @@ export function detect(clean) {
   return found.sort((a, b) => a.at - b.at);
 }
 
-function compose(ids) {
+function compose(ids, level = 'lenient') {
   const has = (x) => ids.includes(x), D = 24, E = [], sky = [];
   const water = has('sea') || has('ship'), wet = has('rain'), grow = has('plants') || has('trees') || has('dead');
   const night = has('night') || ((has('moon') || has('stars')) && !has('sun') && !has('day'));
@@ -57,6 +60,11 @@ function compose(ids) {
     if (has('bees')) E.push({ type: 'bees', from: 1, to: 20 });
     if (has('web')) E.push({ type: 'web', windFrom: 10, tearFrom: 13, tearTo: 20 });
   }
+  if (level === 'lenient') {
+    if (has('birds')) E.push({ type: 'birds', count: 7, y: 0.2, x0: -0.1, x1: 1.05, mode: 'both', from: 1, to: D - 1 });
+    if (has('cattle') && !water) E.push({ type: 'animal', kind: 'sheep', x: 0.62, graze: true }, { type: 'animal', kind: 'camel', x0: 0.98, x1: 0.8, from: 2, to: 9 }, { type: 'animal', kind: 'cow', x: 0.45, size: 0.9, graze: true, seed: 3 });
+    if (has('people') && !water) E.push({ type: 'person', look: 'man', x0: 0.05, x1: 0.24, pose: wet ? 'cheer' : 'walk', from: 0, to: 6 }, { type: 'person', look: 'girl', x: 0.32, pose: wet || has('sun') || night ? 'lookup' : 'stand', seed: 2 });
+  }
   return { duration: D, sky, elements: E.map((e) => Object.fromEntries(Object.entries(e).filter(([, v]) => v !== undefined))) };
 }
 
@@ -77,7 +85,7 @@ export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onSt
   onStep('tafsir', 'done', found.length ? `مفاهيم مرئية: ${found.map((f) => f.cap).join('، ')}` : 'لا مفاهيم كونية مرئية في الآية');
 
   onStep('review', 'run'); await wait(350);
-  const barriers = textBarriers(clean), visual = found.filter((f) => f.id !== 'earth').length > 0;
+  const barriers = textBarriers(clean), visual = found.filter((f) => f.id !== 'earth' && !f.fig).length > 0;
   const allowed = strictness === 'lenient' || (visual && (strictness === 'balanced' ? !barriers.some((b) => /غيبي|صفة/.test(b)) : !barriers.length));
   if (allowed) {
     const notes = barriers.map((b) => `يُترك من المشهد: ${b}`);
@@ -92,13 +100,13 @@ export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onSt
   }
 
   onStep('paint', 'run'); await wait(400);
-  const ids = found.map((f) => f.id), calm = !ids.some((x) => x !== 'earth');
-  const scene = compose(calm ? ['day', 'plants', 'mountains'] : ids);
+  const ids = found.filter((f) => !f.fig || strictness === 'lenient').map((f) => f.id), calm = !ids.some((x) => x !== 'earth');
+  const scene = compose(calm ? ['day', 'plants', 'mountains'] : ids, strictness);
   report.paint = { elements: scene.elements.map((e) => TYPE_NAMES[e.type]) };
   onStep('paint', 'done', [...new Set(report.paint.elements)].join('، '));
 
   onStep('animate', 'run'); await wait(400);
-  const caps = found.filter((f) => f.id !== 'earth' || found.length === 1);
+  const caps = found.filter((f) => (f.id !== 'earth' || found.length === 1) && (!f.fig || strictness === 'lenient'));
   scene.captions = calm ? tafsirBeats(tafsir, scene.duration) : caps.map((f, i) => ({ t: +(1 + (i * (scene.duration - 7)) / Math.max(1, caps.length)).toFixed(1), text: f.cap }));
   scene.captions.push({ t: scene.duration - 4.5, text: 'مشهد تقريبي آلي — المعنى الكامل في التفسير أسفل المشهد' });
   report.animate = { duration: scene.duration, beats: scene.captions.length };

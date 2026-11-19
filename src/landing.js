@@ -13,7 +13,7 @@ $('#n-scenes').textContent = AR(LIBRARY.length);
 POLICY.forEach((p) => { const li = document.createElement('li'); li.textContent = p; $('#policy').append(li); });
 
 // العرض الحيّ: يتنقّل بين مشاهد مختارة
-const picks = ['earth-stirs', 'seven-ears', 'bare-rock', 'mirage', 'shadow', 'ships-still'].map((id) => LIBRARY.find((x) => x.id === id)).filter(Boolean);
+const picks = ['birds-held', 'earth-stirs', 'cattle', 'seven-ears', 'mirage', 'rain-revival'].map((id) => LIBRARY.find((x) => x.id === id)).filter(Boolean);
 const cap = $('#demo-cap'), title = $('#demo-title'), dots = $('#demo-dots');
 let idx = 0, lastCap = null, timer;
 const player = new Player($('#demo'), (t, pl) => {
