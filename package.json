@@ -1,6 +1,6 @@
 {
   "name": "mashhadaya",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "مَشهَدآية — استوديو الآيات القرآنية: يحوّل معنى الآية إلى مشهد متحرك يُفهم بالنظر",
   "author": "Mashhadaya",
   "license": "MIT",
@@ -61,5 +61,5 @@
     "type": "git",
     "url": "https://github.com/abdulrahmanahmedelabed-prog/ayat_studio.git"
   },
-  "releaseNotes": "تنبيه بالتحديثات داخل التطبيق، مع شخصيات الأنمي والتلاوة المرتّلة."
+  "releaseNotes": "ترجمة معاني الآيات بخمس لغات، والمفضّلة، ولعبة «اختبر فهمك» للأطفال."
 }

@@ -45,6 +45,32 @@ const level = () => (STRICTNESS[store.get('strict')] ? store.get('strict') : DEF
 const reciteOn = () => store.get('recite', '1') === '1';
 const reciter = () => (RECITERS[store.get('reciter')] ? store.get('reciter') : DEFAULT_RECITER);
 
+// ───────── الترجمات (QuranEnc، نصّ غير معدَّل) ─────────
+const LANGS = {
+  en: { name: 'English — Saheeh International', dir: 'ltr', credit: 'Saheeh International · QuranEnc.com (english_saheeh v1.1.2)' },
+  fr: { name: 'Français — Montada Islamic Foundation', dir: 'ltr', credit: 'Montada Islamic Foundation · QuranEnc.com (french_montada v1.0.0)' },
+  id: { name: 'Bahasa Indonesia — Kementerian Agama', dir: 'ltr', credit: 'Kementerian Agama RI · QuranEnc.com (indonesian_affairs v1.0.1)' },
+  tr: { name: 'Türkçe — Rowwad Translation Center', dir: 'ltr', credit: 'Rowwad Translation Center · QuranEnc.com (turkish_rwwad v1.0.4)' },
+  ur: { name: 'اردو — محمد جوناگڑھی', dir: 'rtl', credit: 'محمد جوناگڑھی · QuranEnc.com (urdu_junagarhi v1.1.3)' },
+};
+const lang = () => (LANGS[store.get('lang')] ? store.get('lang') : '');
+function translationBlock(A) {
+  const code = lang(); if (!code) return null;
+  const L = LANGS[code], body = h('div', { class: 'tr-body', dir: L.dir, lang: code }, h('p', { class: 'note' }, '…'));
+  load('tr/' + code).then((TR) => body.replaceChildren(...A.rows.map((r) => {
+    const [text, notes] = TR[A.ch.id - 1][r.a - 1];
+    return h('div', { class: 'tr-ayah' }, h('p', {}, text), notes ? h('details', {}, h('summary', {}, code === 'ur' ? 'حواشی' : code === 'en' ? 'Footnotes' : code === 'fr' ? 'Notes' : code === 'id' ? 'Catatan' : 'Dipnotlar'), h('p', { class: 'tr-notes' }, notes)) : null);
+  }))).catch(() => body.replaceChildren(h('p', { class: 'note' }, 'تعذّر تحميل الترجمة.')));
+  return h('section', { class: 'panel' }, h('h3', {}, 'الترجمة', h('span', { class: 'chip' }, L.name)), body, h('p', { class: 'src' }, L.credit));
+}
+
+// ───────── المفضّلة وآخر ما شوهد ─────────
+const listGet = (k) => { try { return JSON.parse(store.get(k, '[]')) || []; } catch { return []; } };
+const listSet = (k, v) => store.set(k, JSON.stringify(v));
+const isFav = (id) => listGet('favs').includes(id);
+const toggleFav = (id) => { const f = listGet('favs'); listSet('favs', f.includes(id) ? f.filter((x) => x !== id) : [id, ...f]); return !f.includes(id); };
+const markSeen = (id) => listSet('seen', [id, ...listGet('seen').filter((x) => x !== id)].slice(0, 8));
+
 // ───────── المشغّل ─────────
 let current = null; // المشغّل الظاهر حاليًا
 function verseBlock(A) {
@@ -86,7 +112,12 @@ function reportBlock(rep, seek) {
       rep.timeline ? h('ol', { class: 'timeline' }, rep.timeline.map((c) => h('li', {}, h('button', { onclick: () => seek?.(c.t + 0.05), 'aria-label': 'انتقل إلى هذه اللقطة' }, h('time', {}, AR(Math.round(c.t)) + 'ث'), c.text)))) : null));
 }
 
-function playerView({ title, scene, A, report, ref }) {
+function favButton(id) {
+  const b = h('button', { class: 'fav', 'aria-pressed': String(isFav(id)), onclick: () => { const on = toggleFav(id); b.setAttribute('aria-pressed', String(on)); b.lastChild.textContent = on ? 'في المفضّلة' : 'أضف إلى المفضّلة'; } }, h('span', { 'aria-hidden': 'true' }, '♥'), h('span', {}, isFav(id) ? 'في المفضّلة' : 'أضف إلى المفضّلة'));
+  return b;
+}
+
+function playerView({ title, scene, A, report, ref, favId }) {
   const canvas = h('canvas', { class: 'stage', role: 'img', 'aria-label': 'مشهد متحرك: ' + title });
   const cap = h('div', { class: 'caption', 'aria-live': 'polite' });
   const bar = h('input', { type: 'range', min: 0, max: scene.duration, step: 0.05, value: 0, 'aria-label': 'موضع المشهد' });
@@ -131,7 +162,7 @@ function playerView({ title, scene, A, report, ref }) {
   return h('div', { class: 'player' },
     h('div', { class: 'col-stage' }, wrap, h('div', { class: 'controls' }, playBtn, bar, time, speed, full, rec),
       rc ? status : null, h('p', { class: 'note' }, 'المشهد وسيلة إيضاح للمعنى وليس تفسيرًا. المرجع هو التفسير أدناه وأهل العلم.')),
-    h('div', { class: 'col-text' }, h('h2', {}, title), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, tafsirBlock(A), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
+    h('div', { class: 'col-text' }, h('div', { class: 'titlerow' }, h('h2', {}, title), favId ? favButton(favId) : null), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, translationBlock(A), tafsirBlock(A), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
 }
 
 // يسجّل المشهد كاملًا فيديو WebM مع الشروح مرسومة عليه، ثم ينزّله.
@@ -197,26 +228,29 @@ function curatedReport(item, A) {
 const view = $('#view');
 function mount(...nodes) { current?.cleanup?.(); current?.destroy(); current = null; view.replaceChildren(...nodes); view.scrollTo?.(0, 0); window.scrollTo(0, 0); }
 
+function sceneCard(item) {
+  const cv = h('canvas', { width: 480, height: 270 });
+  requestAnimationFrame(() => drawScene(cv.getContext('2d'), 480, 270, item, item.duration * (item.thumb ?? 0.78)));
+  const meta = h('small', {}, '…');
+  load('chapters').then((CH) => { meta.textContent = `${CH[item.ref.s - 1].name} ${AR(item.ref.from)}${item.ref.to > item.ref.from ? '–' + AR(item.ref.to) : ''} · ${AR(item.duration)} ث`; });
+  return h('button', { class: 'card', onclick: () => go('scene/' + item.id) }, cv, h('span', {}, h('b', {}, isFav(item.id) ? h('i', { class: 'heart', 'aria-label': 'في المفضّلة' }, '♥ ') : null, item.title), meta));
+}
 function pageLibrary() {
-  const cats = [...new Set(LIBRARY.map((x) => x.cat))];
+  const visible = LIBRARY.filter((x) => !x.needsFigures || level() === 'lenient').map((item) => forLevel(item, level()));
+  const byId = (ids) => ids.map((id) => visible.find((x) => x.id === id)).filter(Boolean);
+  const cats = [...new Set(visible.map((x) => x.cat))], favs = byId(listGet('favs')), seen = byId(listGet('seen')).slice(0, 4);
+  const row = (title, items) => items.length ? h('section', {}, h('h2', { class: 'cat' }, title), h('div', { class: 'grid' }, items.map(sceneCard))) : null;
   mount(h('div', { class: 'page' },
     h('div', { class: 'hero' }, h('h1', {}, 'افهم الآية بالنظر'),
       h('p', {}, 'كل مشهد يحوّل معنى آية كونية أو مَثَل قرآني إلى حركة صامتة تُفهم دون شرح طويل، مع نصّ الآية والتفسير الميسّر، وتقرير يبيّن ما رُسم وما تُرك ولماذا.')),
-    ...cats.map((cat) => h('section', {}, h('h2', { class: 'cat' }, cat),
-      h('div', { class: 'grid' }, LIBRARY.filter((x) => x.cat === cat && (!x.needsFigures || level() === 'lenient')).map((item) => forLevel(item, level())).map((item) => {
-        const cv = h('canvas', { width: 480, height: 270 });
-        requestAnimationFrame(() => drawScene(cv.getContext('2d'), 480, 270, item, item.duration * (item.thumb ?? 0.78)));
-        const meta = h('small', {}, '…');
-        load('chapters').then((CH) => { meta.textContent = `${CH[item.ref.s - 1].name} ${AR(item.ref.from)}${item.ref.to > item.ref.from ? '–' + AR(item.ref.to) : ''} · ${AR(item.duration)} ث`; });
-        return h('button', { class: 'card', onclick: () => go('scene/' + item.id) }, cv, h('span', {}, h('b', {}, item.title), meta));
-      }))))));
+    row('المفضّلة', favs), row('شاهدت مؤخرًا', seen),
+    ...cats.map((cat) => row(cat, visible.filter((x) => x.cat === cat)))));
 }
-
 async function pageScene(id) {
   const item = LIBRARY.find((x) => x.id === id); if (!item) return go('library');
   mount(h('p', { class: 'loading' }, 'جارٍ التحميل…'));
-  const A = await ayat(item.ref), sc = forLevel(item, level());
-  mount(h('div', { class: 'page' }, h('button', { class: 'back', onclick: () => go('library') }, '→ المكتبة'), playerView({ title: item.title, scene: sc, A, report: curatedReport(sc, A), ref: item.ref })));
+  const A = await ayat(item.ref), sc = forLevel(item, level()); markSeen(item.id);
+  mount(h('div', { class: 'page' }, h('button', { class: 'back', onclick: () => go('library') }, '→ المكتبة'), playerView({ title: item.title, scene: sc, A, report: curatedReport(sc, A), ref: item.ref, favId: item.id })));
 }
 
 const STEPS = ['tafsir', 'review', 'paint', 'animate', 'final'];
@@ -284,7 +318,7 @@ function pageAbout() {
   const key = h('input', { type: 'password', value: store.get('key'), placeholder: 'sk-ant-…', autocomplete: 'off', dir: 'ltr', 'aria-label': 'مفتاح Anthropic API' });
   const model = h('select', { 'aria-label': 'النموذج' }, [['claude-opus-5-5', 'Claude Opus 5.5 (الافتراضي)'], ['claude-fable-5-2', 'Claude Fable 5.2 (الأقدر)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (أسرع)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (الأرخص)']].map(([v, t]) => h('option', { value: v }, t)));
   model.value = store.get('model', 'claude-opus-5-5');
-  const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' }), rcMsg = h('span', { class: 'saved', role: 'status' }), upMsg = h('span', { class: 'saved', role: 'status' });
+  const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' }), rcMsg = h('span', { class: 'saved', role: 'status' }), upMsg = h('span', { class: 'saved', role: 'status' }), trMsg = h('span', { class: 'saved', role: 'status' });
   mount(h('div', { class: 'page narrow' },
     h('div', { class: 'hero' }, h('h1', {}, 'الضوابط والإعدادات')),
     h('section', { class: 'panel' }, h('h3', {}, 'درجة المراجع الشرعي'),
@@ -295,6 +329,10 @@ function pageAbout() {
       })), lvlMsg),
     h('section', { class: 'panel' }, h('h3', {}, 'الضوابط الشرعية للمشاهد'), h('ol', { class: 'policy' }, POLICY.map((p) => h('li', {}, p))),
       h('p', { class: 'src' }, 'هذه الضوابط مبنية في المحرّك: لا يملك عناصر للغيب، والشخصيات العامة تُحذف آليًا خارج درجة «متساهل»، ثم يُفحص كل مشهد قبل عرضه. ومع ذلك فالتطبيق جهد بشري وآلي يحتمل الخطأ، ويُستحسن عرض المشاهد المولَّدة على طالب علم قبل نشرها أو تعليمها.')),
+    h('section', { class: 'panel' }, h('h3', {}, 'الترجمة'),
+      h('p', {}, 'تظهر ترجمة معاني الآية تحت نصّها، لمن لا يحسن العربية. الترجمات من QuranEnc.com كما هي دون تعديل، وتعمل دون إنترنت.'),
+      h('div', { class: 'form' }, h('label', {}, 'لغة الترجمة', h('select', { id: 'lang', onchange: (ev) => { store.set('lang', ev.target.value); trMsg.textContent = 'حُفظ.'; } },
+        h('option', { value: '', selected: !lang() }, 'دون ترجمة'), Object.entries(LANGS).map(([c, L]) => h('option', { value: c, selected: c === lang() }, L.name)))), trMsg)),
     h('section', { class: 'panel' }, h('h3', {}, 'التلاوة'),
       h('p', {}, 'تُسمع الآية مرتّلة مع المشهد، ويمتد المشهد على طول التلاوة، وتدخل التلاوة في الفيديو المحفوظ. تحتاج اتصالًا بالإنترنت لأن ملفات الصوت تُبثّ ولا تُخزَّن في التطبيق.'),
       h('div', { class: 'form' },
@@ -316,6 +354,7 @@ function pageAbout() {
     h('section', { class: 'panel' }, h('h3', {}, 'المصادر والحقوق'), h('ul', {},
       h('li', {}, 'نصّ القرآن الكريم: مشروع تنزيل (Tanzil.net)، الرسم العثماني، رخصة CC BY 3.0 — يُعرض كما هو دون أي تعديل.'),
       h('li', {}, 'التفسير: التفسير الميسّر، مجمع الملك فهد لطباعة المصحف الشريف (عبر QUL / Tarteel).'),
+      h('li', {}, 'الترجمات: QuranEnc.com — موسوعة القرآن الكريم، منشورة دون تعديل وفق شروط إعادة النشر، مع ذكر المترجم ورقم الإصدار.'),
       h('li', {}, 'الخطوط: Amiri Quran و Tajawal برخصة SIL OFL.'),
       h('li', {}, 'شروح المشاهد صياغة مختصرة لمعنى التفسير الميسّر، وليست نصًّا قرآنيًا ولا تفسيرًا مستقلًا.'))),
     h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ' + AR(APP_VERSION).replace(/\./g, '٫'))));
@@ -326,13 +365,44 @@ function go(route) { location.hash = '#/' + route; }
 function router() {
   const r = location.hash.replace(/^#\//, '') || 'library', top = r.split('/')[0];
   document.querySelectorAll('.nav button').forEach((b) => b.toggleAttribute('aria-current', b.dataset.go === (top === 'scene' ? 'library' : top)));
-  const page = top === 'scene' ? pageScene(r.split('/')[1]) : top === 'studio' ? pageStudio() : top === 'about' ? pageAbout() : pageLibrary();
+  const page = top === 'scene' ? pageScene(r.split('/')[1]) : top === 'studio' ? pageStudio() : top === 'about' ? pageAbout() : top === 'quiz' ? pageQuiz() : pageLibrary();
   Promise.resolve(page).catch((e) => mount(h('p', { class: 'error', role: 'alert' }, e.message)));
 }
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
 document.addEventListener('keydown', (e) => { if (e.code === 'Space' && current && !/INPUT|SELECT|BUTTON|TEXTAREA/.test(e.target.tagName)) { e.preventDefault(); current.toggle(); } });
 window.addEventListener('hashchange', router);
 document.fonts?.ready.then(() => current?.draw());
+// ───────── اختبر فهمك ─────────
+const quiz = { score: 0, total: 0, last: null };
+async function pageQuiz() {
+  const pool = LIBRARY.filter((x) => !x.needsFigures || level() === 'lenient');
+  let item; do item = pool[Math.floor(Math.random() * pool.length)]; while (pool.length > 1 && item.id === quiz.last);
+  quiz.last = item.id;
+  const others = pool.filter((x) => x.id !== item.id).sort(() => Math.random() - 0.5).slice(0, 2);
+  const options = [item, ...others].sort(() => Math.random() - 0.5);
+  const [Q, CH] = await Promise.all([load('quran'), load('chapters')]);
+  const verseOf = (x) => { const t = Q[x.ref.s - 1][x.ref.from - 1]; return t.split(' ').length > 16 ? t.split(' ').slice(0, 16).join(' ') + ' …' : t; };
+  const scene = { ...forLevel(item, level()), captions: [] }; // دون شروح: الصورة وحدها
+  const canvas = h('canvas', { class: 'stage', role: 'img', 'aria-label': 'مشهد الاختبار' });
+  const p = new Player(canvas, (t, pl) => { if (!pl.playing && t >= scene.duration - 0.05) setTimeout(() => pl.play(), 900); });
+  const result = h('div', { class: 'quiz-result', role: 'status' });
+  const scoreEl = h('p', { class: 'quiz-score' }, `النتيجة: ${AR(quiz.score)} من ${AR(quiz.total)}`);
+  const btns = options.map((o) => h('button', { class: 'quiz-opt', onclick: () => answer(o) },
+    h('span', { class: 'quran' }, verseOf(o)), h('small', {}, `سورة ${CH[o.ref.s - 1].name} · ${AR(o.ref.from)}`)));
+  function answer(o) {
+    if (btns[0].disabled) return;
+    const ok = o === item; quiz.total++; if (ok) quiz.score++;
+    btns.forEach((b, i) => { b.disabled = true; b.classList.toggle('right', options[i] === item); b.classList.toggle('wrong', options[i] === o && !ok); });
+    scoreEl.textContent = `النتيجة: ${AR(quiz.score)} من ${AR(quiz.total)}`;
+    result.replaceChildren(h('p', { class: ok ? 'ok' : 'no' }, ok ? 'أحسنت! هذا مشهد الآية.' : `ليس هذا. المشهد لآية «${item.title}».`),
+      h('div', { class: 'actions-row' }, h('button', { class: 'primary', onclick: () => pageQuiz() }, 'المشهد التالي'), h('button', { class: 'ghost', onclick: () => go('scene/' + item.id) }, 'شاهد المشهد مع شرحه')));
+  }
+  mount(h('div', { class: 'page narrow' },
+    h('div', { class: 'hero' }, h('h1', {}, 'اختبر فهمك'), h('p', {}, 'شاهد المشهد دون شرح، ثم اختر الآية التي يصوّر معناها.')),
+    h('div', { class: 'stagewrap' }, canvas), scoreEl, h('div', { class: 'quiz-opts' }, btns), result));
+  queueMicrotask(() => { current = p; p.setScene(scene); p.play(); });
+}
+
 // شريط التحديث أعلى التطبيق
 function showUpdate(u) {
   document.querySelector('.update-bar')?.remove();

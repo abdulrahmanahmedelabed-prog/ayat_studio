@@ -156,3 +156,26 @@ input:not([type=range]), select { background: var(--raise); border: 1px solid va
 .update-text span { color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
 .update-actions { display: flex; gap: 8px; align-items: center; }
 .update-actions .primary { text-decoration: none; padding: 8px 18px; }
+
+.titlerow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.fav { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-weight: 700; font-size: .9rem; }
+.fav[aria-pressed=true] { color: #e8768c; border-color: #e8768c; }
+.heart { font-style: normal; color: #e8768c; }
+.tr-body { display: grid; gap: 12px; line-height: 1.9; }
+.tr-body[dir=ltr] { font-family: system-ui, sans-serif; text-align: left; }
+.tr-ayah p { margin: 0; }
+.tr-ayah details { margin-top: 6px; color: var(--muted); font-size: .88rem; }
+.tr-ayah summary { cursor: pointer; }
+.tr-notes { white-space: pre-line; }
+.quiz-score { color: var(--gold); font-weight: 700; margin: 14px 0 10px; }
+.quiz-opts { display: grid; gap: 10px; }
+.quiz-opt { display: grid; gap: 4px; text-align: center; padding: 14px 16px; border-radius: 14px; background: var(--paper); color: var(--ink); border: 3px solid transparent; }
+.quiz-opt .quran { font-size: 1.3rem; line-height: 2; }
+.quiz-opt small { color: #7a6a43; font-weight: 700; }
+.quiz-opt:not(:disabled):hover { border-color: var(--gold); }
+.quiz-opt.right { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal); }
+.quiz-opt.wrong { opacity: .55; border-color: var(--bad); }
+.quiz-opt:disabled { cursor: default; }
+.quiz-result { margin-top: 14px; display: grid; gap: 12px; font-weight: 700; }
+.actions-row { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 700px) { .nav button { font-size: .8rem; padding: 10px 2px; } }
