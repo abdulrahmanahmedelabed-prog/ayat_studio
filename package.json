@@ -1,6 +1,6 @@
 {
   "name": "mashhadaya",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "مَشهَدآية — استوديو الآيات القرآنية: يحوّل معنى الآية إلى مشهد متحرك يُفهم بالنظر",
   "author": "Mashhadaya",
   "license": "MIT",
@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "check": "node scripts/check-scenes.mjs",
     "preview": "vite preview",
     "desktop": "vite build && electron .",
     "dist:win": "vite build && electron-builder --win --x64",

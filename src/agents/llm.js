@@ -12,16 +12,18 @@ const DSL = `وصف المشهد كائن JSON بهذا الشكل:
 {"duration": ثوانٍ (14-36), "horizon": موضع خط الأفق 0.4-0.8 (اختياري),
  "sky": [{"t": ثانية, "mode": "night|dawn|day|dusk|storm|deep"}],
  "elements": [ {"type": ..., "from": ثانية الظهور, "to": ثانية اكتمال الحركة, "until": ثانية الاختفاء (اختياري), ...خصائص} ],
+ "camera": [{"t": ثانية, "zoom": 1-2, "x": 0-1, "y": 0-1}] (اختياري: اقتراب هادئ من موضع المعنى),
  "captions": [{"t": ثانية, "text": "شرح قصير"}] }
 العناصر تُرسم بترتيب ورودها (الأبعد أولًا). الإحداثيات x,y نسب من 0 إلى 1. الأنواع المتاحة فقط:
 - stars | sun {motion: still|rise|set|arc, x, y} | moon {motion, phase: رقم 0-1 أو cycle|wax|wane, row: true لعرض منازل القمر متتابعة}
 - clouds {count, dark 0-1, darkTo, gather: true لتتجمع, y, size} | rain {intensity} | lightning | wind {intensity}
-- mountains {count, snow, roots: true لإظهار امتدادها في الأرض كالوتد, size}
+- mountains {count, snow, streaks: true لطرائق بيض وحمر, color, roots: true لإظهار امتدادها في الأرض كالوتد, size}
 - ground {green 0-1 أو greenFrom/greenTo لتخضرّ مع الزمن, swell 0-1 لتربو, hill 0-1 لربوة, cracks, dryFrom/dryTo لتيبس}
 - plants {kind: grass|crop|flowers, count, growFrom, growTo, witherFrom, witherTo, scatter: true لتذروه الرياح}
 - tree {kind: broad|palm|olive|vine, x, size, growFrom, growTo, fruit, fruitFrom, roots}
 - grain {x, size} حبة تنبت سبع سنابل | sea {y, storm} | twoSeas {barrierFrom} | ship {x0, x1} | river {foam, foamFadeFrom, foamFadeTo}
 - bees {x, y, count} خلية ونحل مرموز له بنقاط | web {windFrom, tearFrom, tearTo} بيت عنكبوت | ashes {blowFrom} رماد تذروه الريح
+- hail بَرَد | rock {washFrom, washTo} حجر أملس عليه تراب يزيله المطر | shadow {x} ظل يتبع الشمس (ضعه بعد sun و ground) | mirage {fadeFrom, fadeTo} سراب | sprout {kind: grain|stone, x} حبة أو نواة تنفلق | bitter {uprootFrom, uprootTo} شجرة حنظل تُجتث
 - orbits أفلاك الشمس والقمر | depths {y} مقطع بحر عميق تتراكم ظلماته | label {text (حتى 4 كلمات), x, y}
 لنباتٍ نامٍ منذ البداية استعمل growFrom: -6 و growTo: -1. لا توجد أنواع أخرى، ولا يمكن رسم إنسان أو حيوان أو بناء.`;
 

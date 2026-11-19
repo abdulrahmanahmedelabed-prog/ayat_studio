@@ -4,26 +4,88 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b1417" />
-<meta name="description" content="مَشهَدآية — استوديو يحوّل معنى الآية القرآنية إلى مشهد متحرك يُفهم بالنظر" />
-<link rel="manifest" href="./manifest.webmanifest" />
+<title>مَشهَدآية — افهم الآية بالنظر</title>
+<meta name="description" content="تطبيق يحوّل معنى الآية القرآنية إلى مشهد متحرك صامت يُفهم بالنظر، مع نصّ المصحف والتفسير الميسّر، بضوابط شرعية مبنية في المحرّك. لأندرويد وويندوز والمتصفح." />
+<meta property="og:title" content="مَشهَدآية — افهم الآية بالنظر" />
+<meta property="og:description" content="مشاهد متحركة لمعاني الآيات الكونية والأمثال القرآنية، مربوطة بألفاظ الآية والتفسير الميسّر." />
+<meta property="og:type" content="website" />
 <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-<title>مَشهَدآية</title>
 </head>
-<body>
-<div id="app">
-  <header class="top">
-    <button class="brand" data-go="library" aria-label="الرئيسية">
-      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0f2a2e"/><circle cx="43" cy="22" r="9" fill="#e6c25f"/><path d="M6 50 22 26l11 15 8-10 17 19Z" fill="#3f8f7f"/><path d="M6 50h52v4a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6Z" fill="#1c5a55"/></svg>
-      <span><b>مَشهَدآية</b><small>استوديو الآيات القرآنية</small></span>
-    </button>
-    <nav class="nav" aria-label="الأقسام">
-      <button data-go="library">المكتبة</button>
-      <button data-go="studio">الاستوديو</button>
-      <button data-go="about">الضوابط والإعدادات</button>
-    </nav>
-  </header>
-  <main id="view" tabindex="-1"></main>
-</div>
-<script type="module" src="/src/main.js"></script>
+<body class="landing">
+<header class="top">
+  <a class="brand" href="#top" aria-label="مَشهَدآية">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0f2a2e"/><circle cx="43" cy="22" r="9" fill="#e6c25f"/><path d="M6 50 22 26l11 15 8-10 17 19Z" fill="#3f8f7f"/><path d="M6 50h52v4a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6Z" fill="#1c5a55"/></svg>
+    <span><b>مَشهَدآية</b><small>استوديو الآيات القرآنية</small></span>
+  </a>
+  <nav class="lnav" aria-label="أقسام الصفحة">
+    <a href="#how">كيف يعمل</a><a href="#scenes">المشاهد</a><a href="#rules">الضوابط</a><a href="#get">التنزيل</a>
+    <a class="cta small" href="./app.html">افتح التطبيق</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="lhero">
+    <div class="lhero-text">
+      <p class="eyebrow">للمعلّم، وللطفل، ولمن لا يحسن العربية</p>
+      <h1>افهم الآية <em>بالنظر</em></h1>
+      <p class="lede">حين تقرأ «اهتزّت ورَبَت» ترى الأرض اليابسة تتحرك بالنبات وتعلو. مَشهَدآية يحوّل معنى الآية الكونية والمَثَل القرآني إلى مشهد متحرك صامت، ويظلّل لك لفظ الآية المقابل لكل لقطة، ويضع التفسير الميسّر تحتها.</p>
+      <div class="actions">
+        <a class="cta" href="./app.html">جرّبه الآن في المتصفح</a>
+        <a class="cta ghostcta" href="#get">نزّل التطبيق</a>
+      </div>
+      <ul class="facts">
+        <li><b id="n-scenes">٢٩</b> مشهدًا مُعدًّا ومراجَعًا</li>
+        <li><b>٦٬٢٣٦</b> آية بتفسيرها دون إنترنت</li>
+        <li><b>٤</b> وكلاء يبنون مشهد أي آية</li>
+      </ul>
+    </div>
+    <figure class="demo">
+      <div class="stagewrap"><canvas id="demo" class="stage" role="img" aria-label="عرض حيّ لمشاهد التطبيق"></canvas><div class="caption" id="demo-cap"></div></div>
+      <figcaption><span id="demo-title"></span><span class="dots" id="demo-dots"></span></figcaption>
+    </figure>
+  </section>
+
+  <section id="how" class="band">
+    <h2>أربعة وكلاء، وكل واحد يراقب الذي قبله</h2>
+    <p class="sub">اختر أي آية من المصحف، فتمرّ على هذا الخط. يعمل دون إنترنت بقواعد محلية، أو بالذكاء الاصطناعي إن أضفت مفتاحك.</p>
+    <ol class="agentsrow">
+      <li><span>١</span><h3>جامع التفسير</h3><p>يقرأ التفسير الميسّر للآية ويستخرج المعنى والمحسوسات التي ذكرتها الآية نفسها. لا يجتهد في معنى جديد.</p></li>
+      <li><span>٢</span><h3>المراجع الشرعي</h3><p>يقرّر قبل أي رسم: هل تُصوَّر هذه الآية أصلًا؟ ثم يعود في النهاية فيفحص المشهد كاملًا، وله أن يرفضه.</p></li>
+      <li><span>٣</span><h3>الرسّام</h3><p>يؤلّف المشهد من مفردات كونية محدودة: سماء وماء وأرض ونبات وجبال. لا يملك غيرها.</p></li>
+      <li><span>٤</span><h3>المحرّك</h3><p>يرتّب الحركة على ترتيب المعاني في الآية، ويكتب شرحًا قصيرًا لكل لقطة من معنى التفسير.</p></li>
+    </ol>
+  </section>
+
+  <section id="scenes" class="band">
+    <h2>مكتبة المشاهد</h2>
+    <p class="sub">آيات كونية وأمثال قرآنية. اضغط أي مشهد ليفتح في التطبيق مع آيته وتفسيره.</p>
+    <div class="grid" id="gallery"></div>
+  </section>
+
+  <section id="rules" class="band split">
+    <div>
+      <h2>ما لا نرسمه أبدًا</h2>
+      <p class="sub">الضوابط ليست تعليمات تُكتب للوكلاء فقط. هي مبنية في محرّك الرسم: لا يوجد فيه عنصر لإنسان ولا لحيوان بملامح ولا لغيب، فلا يستطيع أي وكيل أن يطلبه.</p>
+      <p class="honest">ومع ذلك فهذا عمل برمجي يحتمل الخطأ. اعرض ما تولّده على طالب علم قبل نشره أو تعليمه.</p>
+    </div>
+    <ol class="policy" id="policy"></ol>
+  </section>
+
+  <section id="get" class="band">
+    <h2>نزّل مَشهَدآية</h2>
+    <p class="sub">مجاني ومفتوح المصدر. المكتبة والتفسير يعملان دون إنترنت.</p>
+    <div class="gets">
+      <a class="get" href="./downloads/Mashhadaya-Android.apk" download><h3>أندرويد</h3><p>ملف APK — أندرويد ٧ فأحدث. فعّل «التثبيت من مصادر غير معروفة» عند الطلب.</p><span>تنزيل APK</span></a>
+      <a class="get" href="https://github.com/abdulrahmanahmedelabed-prog/ayat_studio/releases"><h3>ويندوز</h3><p>مثبّت لويندوز ١٠ و ١١ (٦٤ بت) من صفحة الإصدارات.</p><span>صفحة الإصدارات</span></a>
+      <a class="get" href="./app.html"><h3>المتصفح</h3><p>يعمل مباشرة على الآيفون والحاسوب دون تثبيت. أضفه إلى الشاشة الرئيسية.</p><span>افتح التطبيق</span></a>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>نصّ القرآن الكريم من <a href="https://tanzil.net">Tanzil.net</a> (الرسم العثماني، CC BY 3.0) معروض كما هو. التفسير الميسّر من مجمع الملك فهد لطباعة المصحف الشريف. المشاهد وسيلة إيضاح وليست تفسيرًا.</p>
+  <p><a href="https://github.com/abdulrahmanahmedelabed-prog/ayat_studio">الشيفرة المصدرية على GitHub</a> · رخصة MIT</p>
+</footer>
+<script type="module" src="/src/landing.js"></script>
 </body>
 </html>

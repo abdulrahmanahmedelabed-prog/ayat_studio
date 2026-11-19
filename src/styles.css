@@ -124,3 +124,8 @@ input:not([type=range]), select { background: var(--raise); border: 1px solid va
 .page.narrow .panel p + .form { margin-top: 14px; }
 .saved { color: var(--teal); font-weight: 700; align-self: center; }
 .ver { text-align: center; color: var(--muted); font-size: .85rem; }
+
+.w { border-radius: 6px; transition: background-color .35s, box-shadow .35s; }
+.w.hl { background: rgba(224, 189, 98, .5); box-shadow: 0 0 0 3px rgba(224, 189, 98, .5); }
+.timeline button { display: flex; gap: 10px; text-align: start; width: 100%; padding: 3px 4px; border-radius: 6px; color: inherit; }
+.timeline button:hover { background: var(--raise); }

@@ -244,3 +244,256 @@ export const LIBRARY = [
     omitted: ['الدوابّ التي تُسام في الشجر لم تُرسم.'],
   },
 ];
+
+// ───────── مشاهد الإصدار ١٫١ ─────────
+LIBRARY.push(
+  {
+    id: 'piled-clouds', title: 'سحابٌ يُزجى ثم يُركَم', cat: 'آيات كونية', ref: { s: 24, from: 43, to: 43 }, duration: 33,
+    sky: [{ t: 0, mode: 'day' }, { t: 6, mode: 'day' }, { t: 13, mode: 'storm' }],
+    camera: [{ t: 0, zoom: 1 }, { t: 9, zoom: 1 }, { t: 14, zoom: 1.22, x: 0.5, y: 0.25 }, { t: 17, zoom: 1.22, x: 0.5, y: 0.25 }, { t: 21, zoom: 1 }],
+    elements: [
+      { type: 'sun', x: 0.86, y: 0.13, until: 10 }, { type: 'mountains', count: 4, seed: 71, size: 0.7 }, { type: 'ground', green: 0.55, cracks: false },
+      { type: 'plants', kind: 'grass', ...pre, count: 26 }, { type: 'wind', from: 0, until: 9 },
+      { type: 'clouds', count: 5, dark: 0.05, y: 0.2, size: 0.8, drift: 2.2, until: 7 },
+      { type: 'clouds', from: 5, to: 10, gather: true, count: 6, dark: 0.2, darkTo: 0.55, y: 0.24, size: 1.15, drift: 0.3 },
+      { type: 'clouds', from: 10, to: 14, gather: true, count: 5, dark: 0.5, darkTo: 0.8, y: 0.15, size: 1.4, drift: 0.2, seed: 5 },
+      { type: 'clouds', from: 11.5, to: 15, gather: true, count: 4, dark: 0.6, darkTo: 0.9, y: 0.07, size: 1.5, drift: 0.15, seed: 9 },
+      { type: 'rain', from: 15.5, until: 29 }, { type: 'hail', from: 20, until: 28 }, { type: 'lightning', from: 24.5 },
+    ],
+    captions: [
+      { t: 0, text: 'يسوق الله السحاب إلى حيث يشاء', q: 'يزجي سحابا' }, { t: 5.5, text: 'ثم يجمعه بعد تفرقه', q: 'ثم يؤلف بينه' },
+      { t: 10.5, text: 'ثم يجعله متراكمًا', q: 'ثم يجعله ركاما' }, { t: 15.5, text: 'فينزل المطر من بينه', q: 'فترى الودق يخرج من خلاله' },
+      { t: 20, text: 'وينزل من السحاب الذي يشبه الجبال في عظمته بَرَدًا', q: 'وينزل من السماء من جبال فيها من برد' },
+      { t: 24.5, text: 'يكاد ضوء برقه من شدته يذهب بالأبصار', q: 'يكاد سنا برقه يذهب بالأبصار' },
+    ],
+    omitted: ['إصابة البَرَد لمن يشاء الله وصرفه عمّن يشاء لم تُصوَّر؛ لا يُرسم أشخاص.'],
+  },
+  {
+    id: 'winds-clouds', title: 'الرياح تثير سحابًا', cat: 'آيات كونية', ref: { s: 30, from: 48, to: 48 }, duration: 26,
+    sky: [{ t: 0, mode: 'day' }, { t: 9, mode: 'day' }, { t: 14, mode: 'storm' }],
+    elements: [
+      { type: 'sun', x: 0.14, y: 0.13, until: 12 }, { type: 'mountains', count: 3, seed: 77, size: 0.75 }, { type: 'ground', green: 0.5, cracks: false },
+      { type: 'plants', kind: 'grass', ...pre, count: 30 }, { type: 'wind', from: 0, intensity: 1.3, until: 13 },
+      { type: 'clouds', from: 3.5, to: 8, gather: true, count: 4, dark: 0.15, darkTo: 0.45, y: 0.24, size: 1.1 },
+      { type: 'clouds', from: 8, to: 11.5, gather: true, count: 9, dark: 0.3, darkTo: 0.7, y: 0.14, size: 0.9, seed: 12, drift: 1.4 },
+      { type: 'rain', from: 14.5 },
+    ],
+    captions: [
+      { t: 0, text: 'يرسل الله الرياح', q: 'يرسل الرياح' }, { t: 4, text: 'فتثير سحابًا مثقلًا بالماء', q: 'فتثير سحابا' },
+      { t: 8.5, text: 'فينشره الله في السماء كيف يشاء', q: 'فيبسطه في السماء كيف يشاء' }, { t: 11.5, text: 'ويجعله قطعًا متفرقة', q: 'ويجعله كسفا' },
+      { t: 14.5, text: 'فترى المطر يخرج من بين السحاب', q: 'فترى الودق يخرج من خلاله' }, { t: 20, text: 'فإذا ساقه الله إلى عباده استبشروا وفرحوا', q: 'إذا هم يستبشرون' },
+    ],
+    omitted: ['العباد المستبشرون لا يُصوَّرون.'],
+  },
+  {
+    id: 'colors', title: 'مختلفٌ ألوانها', cat: 'آيات كونية', ref: { s: 35, from: 27, to: 27 }, duration: 29, horizon: 0.66,
+    sky: [{ t: 0, mode: 'storm' }, { t: 4, mode: 'storm' }, { t: 8, mode: 'day' }],
+    camera: [{ t: 0, zoom: 1 }, { t: 6, zoom: 1.3, x: 0.5, y: 0.72 }, { t: 12.5, zoom: 1.3, x: 0.5, y: 0.72 }, { t: 15.5, zoom: 1.3, x: 0.6, y: 0.36 }, { t: 20, zoom: 1.3, x: 0.3, y: 0.36 }, { t: 25, zoom: 1 }],
+    elements: [
+      { type: 'mountains', count: 2, seed: 92, size: 1.0, color: '#1b1a20' }, { type: 'mountains', count: 3, seed: 81, size: 0.95, color: '#8b7d74', streaks: true, streakFrom: 13 },
+      { type: 'ground', greenFrom: 3, greenTo: 8 }, { type: 'clouds', count: 6, dark: 0.7, darkTo: 0.05, to: 8, y: 0.1, until: 10 }, { type: 'rain', from: 0.5, until: 6 },
+      { type: 'plants', kind: 'grass', growFrom: 3, growTo: 9, count: 28 },
+      { type: 'tree', x: 0.2, size: 0.85, growFrom: 4, growTo: 9, fruit: true, fruitFrom: 9 }, { type: 'tree', x: 0.4, size: 0.9, growFrom: 4.5, growTo: 9.5, fruit: true, fruitFrom: 9.5, fruitColor: '#f1c40f' },
+      { type: 'tree', x: 0.6, size: 0.85, growFrom: 5, growTo: 10, fruit: true, fruitFrom: 10, fruitColor: '#2b2030' }, { type: 'tree', x: 0.8, size: 0.9, growFrom: 5.5, growTo: 10.5, fruit: true, fruitFrom: 10.5, fruitColor: '#f08a3c' },
+      { type: 'label', text: 'بيض وحُمر', x: 0.62, y: 0.2, from: 15, until: 20.5 }, { type: 'label', text: 'سود', x: 0.28, y: 0.14, from: 21, until: 25.5 },
+    ],
+    captions: [
+      { t: 0, text: 'أنزل الله من السماء ماء', q: 'أنزل من السماء ماء' }, { t: 6, text: 'فأخرج به ثمرات مختلفًا ألوانها: الأحمر والأسود والأصفر وغير ذلك', q: 'فأخرجنا به ثمرات مختلفا ألوانها' },
+      { t: 13.5, text: 'ومن الجبال طرائق بيض وحُمر مختلف ألوانها', q: 'ومن الجبال جدد بيض وحمر مختلف ألوانها' }, { t: 20.5, text: 'وجبال شديدة السواد', q: 'وغرابيب سود' },
+    ],
+    omitted: [],
+  },
+  {
+    id: 'shadow', title: 'كيف مدَّ الظل', cat: 'آيات كونية', ref: { s: 25, from: 45, to: 46 }, duration: 29, horizon: 0.6,
+    sky: [{ t: 0, mode: 'dawn' }, { t: 6, mode: 'dawn' }, { t: 13, mode: 'day' }],
+    elements: [
+      { type: 'stars', until: 3 }, { type: 'sun', motion: 'rise', x0: 0.06, x1: 0.94, from: 6, to: 28 }, { type: 'mountains', count: 3, seed: 15, size: 0.6 },
+      { type: 'ground', green: 0.6, cracks: false }, { type: 'plants', kind: 'grass', ...pre, count: 22, depth: 0.3 },
+      { type: 'shadow', x: 0.42, from: 6 }, { type: 'tree', x: 0.42, size: 1.05, ...pre },
+    ],
+    captions: [
+      { t: 0, text: 'مدَّ الله الظل من طلوع الفجر إلى طلوع الشمس', q: 'كيف مد الظل' }, { t: 6, text: 'ولو شاء لجعله ثابتًا مستقرًّا لا تزيله الشمس', q: 'ولو شاء لجعله ساكنا' },
+      { t: 11, text: 'ثم جعل الشمس علامة يُستدَلّ بأحوالها على أحواله', q: 'ثم جعلنا الشمس عليه دليلا' },
+      { t: 17, text: 'ثم تقلّص الظل يسيرًا يسيرًا', q: 'ثم قبضناه إلينا قبضا يسيرا' }, { t: 23, text: 'فكلما ازداد ارتفاع الشمس ازداد نقصانه' },
+    ],
+    omitted: [],
+  },
+  {
+    id: 'bare-rock', title: 'صفوانٌ عليه تراب', cat: 'أمثال قرآنية', ref: { s: 2, from: 264, to: 264 }, duration: 27, horizon: 0.72,
+    sky: [{ t: 0, mode: 'day' }, { t: 5, mode: 'day' }, { t: 9, mode: 'storm' }, { t: 17, mode: 'storm' }, { t: 21, mode: 'day' }],
+    camera: [{ t: 0, zoom: 1.15, x: 0.5, y: 0.6 }, { t: 9, zoom: 1.15, x: 0.5, y: 0.6 }, { t: 13, zoom: 1.35, x: 0.5, y: 0.64 }, { t: 20, zoom: 1.35, x: 0.5, y: 0.64 }, { t: 24, zoom: 1.1, x: 0.5, y: 0.6 }],
+    elements: [
+      { type: 'sun', x: 0.84, y: 0.14, until: 8 }, { type: 'mountains', count: 3, seed: 37, size: 0.6 }, { type: 'ground', green: 0.12, cracks: false },
+      { type: 'rock', x: 0.5, size: 0.95, washFrom: 10.5, washTo: 18 },
+      { type: 'clouds', from: 5.5, to: 9.5, gather: true, count: 6, dark: 0.2, darkTo: 0.85, y: 0.1, until: 21 }, { type: 'rain', from: 9.5, until: 18.5, intensity: 1.7 },
+    ],
+    captions: [
+      { t: 0, text: 'حجر أملس عليه تراب', q: 'كمثل صفوان عليه تراب' }, { t: 9.5, text: 'هطل عليه مطر غزير', q: 'فأصابه وابل' },
+      { t: 13.5, text: 'فأزاح عنه التراب' }, { t: 18.5, text: 'فتركه أملس لا شيء عليه', q: 'فتركه صلدا' },
+      { t: 22.5, text: 'كذلك المراؤون: تضمحلّ أعمالهم ولا يجدون شيئًا من ثواب ما أنفقوا', q: 'لا يقدرون على شيء مما كسبوا' },
+    ],
+    omitted: ['المنفِق رياءً لا يُصوَّر؛ صُوِّر المشبَّه به (الصفوان) فقط.'],
+  },
+  {
+    id: 'evil-tree', title: 'كشجرة خبيثة اجتُثّت', cat: 'أمثال قرآنية', ref: { s: 14, from: 26, to: 26 }, duration: 23, horizon: 0.7,
+    sky: [{ t: 0, mode: 'dusk' }, { t: 8, mode: 'dusk' }, { t: 13, mode: 'storm' }],
+    camera: [{ t: 0, zoom: 1.45, x: 0.5, y: 0.7 }, { t: 9, zoom: 1.45, x: 0.5, y: 0.7 }, { t: 14, zoom: 1, x: 0.5, y: 0.5 }],
+    elements: [
+      { type: 'mountains', count: 3, seed: 58, size: 0.55 }, { type: 'ground', green: 0.25, cracks: false },
+      { type: 'bitter', x: 0.44, size: 1.5, uprootFrom: 11.5, uprootTo: 17.5 }, { type: 'wind', from: 9.5, intensity: 1.8 },
+    ],
+    captions: [
+      { t: 0, text: 'مَثَل كلمة الكفر كشجرة خبيثة المأكل والمطعم: شجرة الحنظل', q: 'كلمة خبيثة كشجرة خبيثة' },
+      { t: 5.5, text: 'عروقها قريبة من سطح الأرض، لا أصل ثابت لها ولا فرع صاعد' },
+      { t: 11.5, text: 'اقتُلعت من أعلى الأرض', q: 'اجتثت من فوق الأرض' }, { t: 17.5, text: 'ما لها من ثبات — كذلك الكافر لا ثبات له ولا خير فيه', q: 'ما لها من قرار' },
+    ],
+    omitted: ['الريح تمثيل بصري للاقتلاع وليست مذكورة في الآية.'],
+  },
+  {
+    id: 'two-lands', title: 'البلد الطيب والذي خبُث', cat: 'أمثال قرآنية', ref: { s: 7, from: 58, to: 58 }, duration: 27, horizon: 0.6,
+    sky: [{ t: 0, mode: 'storm' }, { t: 7, mode: 'storm' }, { t: 11, mode: 'day' }],
+    elements: [
+      { type: 'mountains', count: 4, seed: 63, size: 0.6 },
+      { type: 'ground', x0: 0.5, x1: 1, greenFrom: 7, greenTo: 15 }, { type: 'ground', x0: 0, x1: 0.5, color: '#c9c0ad', green: 0 },
+      { type: 'clouds', count: 7, dark: 0.75, darkTo: 0.1, to: 11, y: 0.11, until: 13 }, { type: 'rain', from: 0.5, until: 9 },
+      { type: 'plants', kind: 'grass', growFrom: 8, growTo: 14, count: 26, x0: 0.53, x1: 0.98 }, { type: 'plants', kind: 'flowers', growFrom: 9, growTo: 15, count: 18, x0: 0.53, x1: 0.98, seed: 3 },
+      { type: 'tree', x: 0.78, size: 0.8, growFrom: 9, growTo: 15, fruit: true, fruitFrom: 15 },
+      { type: 'plants', kind: 'grass', poor: true, growFrom: 14, growTo: 21, count: 7, x0: 0.05, x1: 0.45, size: 0.5, seed: 44 },
+      { type: 'label', text: 'أرض طيبة', x: 0.75, y: 0.3, from: 8, until: 22 }, { type: 'label', text: 'أرض سَبِخة', x: 0.25, y: 0.3, from: 15, until: 22 },
+    ],
+    captions: [
+      { t: 0, text: 'ينزل المطر على الأرضَين' }, { t: 8, text: 'الأرض النقية تُخرج نباتها طيبًا ميسَّرًا بإذن ربها', q: 'والبلد الطيب يخرج نباته بإذن ربه' },
+      { t: 15, text: 'والأرض السَّبِخة الرديئة لا تُخرج إلا عسرًا رديئًا لا نفع فيه', q: 'والذي خبث لا يخرج إلا نكدا' },
+      { t: 22, text: 'كذلك المؤمن ينتفع بآيات الله، والكافر لا ينتفع بها', q: 'كذلك نصرف الآيات لقوم يشكرون' },
+    ],
+    omitted: ['المؤمن والكافر لا يُصوَّران؛ صُوِّرت الأرضان فقط.'],
+  },
+  {
+    id: 'mirage', title: 'كسرابٍ بقيعة', cat: 'أمثال قرآنية', ref: { s: 24, from: 39, to: 39 }, duration: 25, horizon: 0.58,
+    sky: [{ t: 0, mode: 'day' }],
+    camera: [{ t: 0, zoom: 1 }, { t: 8, zoom: 1.05, x: 0.5, y: 0.58 }, { t: 18, zoom: 1.9, x: 0.5, y: 0.6 }, { t: 21, zoom: 1.9, x: 0.5, y: 0.6 }, { t: 24, zoom: 1.5, x: 0.5, y: 0.6 }],
+    elements: [
+      { type: 'sun', x: 0.5, y: 0.09, size: 1.15 }, { type: 'ground', color: '#dfbd80', green: 0, cracks: false }, { type: 'mirage', x: 0.5, from: 2.5, fadeFrom: 12.5, fadeTo: 18 },
+    ],
+    captions: [
+      { t: 0, text: 'أرض مستوية وقت الظهيرة', q: 'بقيعة' }, { t: 3, text: 'يُشاهَد عليها السراب كأنه ماء', q: 'كسراب' },
+      { t: 8, text: 'يظنه العطشان ماء', q: 'يحسبه الظمآن ماء' }, { t: 13, text: 'فإذا أتاه لم يجده ماء', q: 'حتى إذا جاءه لم يجده شيئا' },
+      { t: 19.5, text: 'كذلك أعمال الكافر: يظنها نافعة له فلا يجد لها ثوابًا', q: 'والذين كفروا أعمالهم' },
+    ],
+    omitted: ['الظمآن لا يُصوَّر؛ اقتراب الكاميرا يمثّل مجيئه إلى السراب.', 'الحساب يوم القيامة غيب لا يُصوَّر؛ ذُكر في التفسير أدناه.'],
+  },
+  {
+    id: 'springs-crop', title: 'ينابيع ثم زرعٌ ثم حُطام', cat: 'آيات كونية', ref: { s: 39, from: 21, to: 21 }, duration: 33,
+    sky: [{ t: 0, mode: 'storm' }, { t: 6, mode: 'storm' }, { t: 10, mode: 'day' }, { t: 19, mode: 'day' }, { t: 26, mode: 'dusk' }],
+    elements: [
+      { type: 'mountains', count: 3, seed: 88, size: 0.8 }, { type: 'ground', greenFrom: 8, greenTo: 14, dryFrom: 19, dryTo: 28 },
+      { type: 'clouds', count: 6, dark: 0.7, darkTo: 0.1, to: 10, y: 0.12, until: 12 }, { type: 'rain', from: 0.5, until: 7 },
+      { type: 'river', from: 6, to: 11, size: 0.55, y: 0.72 },
+      { type: 'plants', kind: 'crop', growFrom: 11, growTo: 17, witherFrom: 19, witherTo: 28, count: 30, depth: 0.5 },
+      { type: 'plants', kind: 'flowers', growFrom: 12, growTo: 18, witherFrom: 19.5, witherTo: 28, count: 22, depth: 0.5, seed: 6 },
+    ],
+    captions: [
+      { t: 0, text: 'أنزل الله من السحاب مطرًا', q: 'أنزل من السماء ماء' }, { t: 6, text: 'فأدخله في الأرض وجعله عيونًا نابعة ومياهًا جارية', q: 'فسلكه ينابيع في الأرض' },
+      { t: 11.5, text: 'ثم يُخرج به زرعًا مختلفًا ألوانه وأنواعه', q: 'ثم يخرج به زرعا مختلفا ألوانه' }, { t: 19, text: 'ثم ييبس بعد خضرته ونضارته فتراه مصفرًّا', q: 'ثم يهيج فتراه مصفرا' },
+      { t: 24.5, text: 'ثم يجعله حطامًا متكسّرًا متفتتًا', q: 'ثم يجعله حطاما' }, { t: 29, text: 'في ذلك ذكرى وموعظة لأصحاب العقول', q: 'لذكرى لأولي الألباب' },
+    ],
+    omitted: [],
+  },
+  {
+    id: 'seed-split', title: 'فالق الحَبّ والنوى', cat: 'آيات كونية', ref: { s: 6, from: 95, to: 95 }, duration: 26, horizon: 0.5,
+    sky: [{ t: 0, mode: 'dawn' }, { t: 8, mode: 'day' }],
+    camera: [{ t: 0, zoom: 1.5, x: 0.7, y: 0.6 }, { t: 9, zoom: 1.5, x: 0.7, y: 0.56 }, { t: 12, zoom: 1.5, x: 0.3, y: 0.6 }, { t: 20, zoom: 1.5, x: 0.3, y: 0.56 }, { t: 23.5, zoom: 1, x: 0.5, y: 0.5 }],
+    elements: [
+      { type: 'sun', motion: 'rise', x0: 0.4, x1: 0.6, to: 24, size: 0.8 }, { type: 'ground', green: 0.25, cracks: false },
+      { type: 'sprout', kind: 'grain', x: 0.7, size: 1.1, from: 0.5, to: 10 }, { type: 'sprout', kind: 'stone', x: 0.3, size: 1.1, from: 0.5, to: 21 },
+    ],
+    captions: [
+      { t: 0, text: 'حبّة في باطن الأرض' }, { t: 2.5, text: 'يشقّ الله الحبّ فيُخرج منه الزرع', q: 'فالق الحب' },
+      { t: 11, text: 'ويشقّ النوى فيُخرج منه الشجر', q: 'والنوى' }, { t: 21, text: 'ذلكم الله: فاعل هذا هو الله وحده لا شريك له', q: 'ذلكم الله' },
+    ],
+    omitted: ['«يخرج الحي من الميت» مثاله في التفسير الإنسان والحيوان من النطفة؛ لم يُصوَّر، واقتصر المشهد على فلق الحب والنوى.'],
+    thumb: 0.95,
+  },
+  {
+    id: 'ships-still', title: 'الجوارِ في البحر كالأعلام', cat: 'آيات كونية', ref: { s: 42, from: 32, to: 33 }, duration: 27, horizon: 0.44,
+    sky: [{ t: 0, mode: 'day' }],
+    elements: [
+      { type: 'sun', x: 0.82, y: 0.12 }, { type: 'clouds', count: 4, y: 0.14, size: 0.8, drift: 1.6 }, { type: 'sea', y: 0.44, storm: 1.5, stormTo: 0.2, from: 0, to: 17 },
+      { type: 'ship', x0: 0.72, x1: 0.56, size: 0.9, dy: 0.06, from: 0, to: 12.5, slackFrom: 12 }, { type: 'ship', x0: 0.1, x1: 0.42, size: 2.3, dy: 0.24, from: 0, to: 12.5, slackFrom: 12 },
+      { type: 'wind', from: 0, until: 12.5, intensity: 1.2 },
+    ],
+    captions: [
+      { t: 0, text: 'السفن العظيمة كالجبال تجري في البحر', q: 'الجوار في البحر كالأعلام' }, { t: 11.5, text: 'إن يشأ الله يُسكن الريح', q: 'إن يشأ يسكن الريح' },
+      { t: 16, text: 'فتبقى السفن سواكن على ظهر البحر لا تجري', q: 'فيظللن رواكد على ظهره' }, { t: 21.5, text: 'في جريها ووقوفها آيات لكل صبّار شكور', q: 'لآيات لكل صبار شكور' },
+    ],
+    omitted: [],
+  },
+  {
+    id: 'food', title: 'فلينظر الإنسان إلى طعامه', cat: 'آيات كونية', ref: { s: 80, from: 24, to: 32 }, duration: 34, horizon: 0.66,
+    sky: [{ t: 0, mode: 'storm' }, { t: 6, mode: 'storm' }, { t: 10, mode: 'day' }],
+    camera: [{ t: 0, zoom: 1 }, { t: 6, zoom: 1 }, { t: 8, zoom: 1.6, x: 0.5, y: 0.72 }, { t: 11, zoom: 1.6, x: 0.5, y: 0.72 }, { t: 14, zoom: 1 }],
+    elements: [
+      { type: 'mountains', count: 3, seed: 21, size: 0.65 }, { type: 'ground', greenFrom: 10.5, greenTo: 17 },
+      { type: 'clouds', count: 6, dark: 0.75, darkTo: 0.1, to: 10, y: 0.11, until: 12 }, { type: 'rain', from: 0.3, until: 7.5, intensity: 1.7 },
+      { type: 'sprout', kind: 'grain', x: 0.5, size: 0.75, from: 6.5, to: 12, until: 14.5 },
+      { type: 'plants', kind: 'crop', growFrom: 11, growTo: 16, count: 34 }, { type: 'plants', kind: 'grass', growFrom: 14.5, growTo: 19, count: 26, seed: 8 },
+      { type: 'tree', kind: 'vine', x: 0.12, size: 1.25, growFrom: 14, growTo: 18, fruit: true, fruitFrom: 18 },
+      { type: 'tree', kind: 'olive', x: 0.33, size: 1, growFrom: 17.5, growTo: 21.5, fruit: true, fruitFrom: 21.5 }, { type: 'tree', kind: 'palm', x: 0.54, size: 1.1, growFrom: 18.5, growTo: 22.5, fruit: true, fruitFrom: 22.5 },
+      { type: 'tree', x: 0.74, size: 1.2, growFrom: 22, growTo: 26, fruit: true, fruitFrom: 26.5 }, { type: 'tree', x: 0.91, size: 1.3, growFrom: 22.5, growTo: 26.5, fruit: true, fruitFrom: 27, fruitColor: '#f0a531' },
+    ],
+    captions: [
+      { t: 0, text: 'فليتدبر الإنسان كيف خلق الله طعامه', q: 'فلينظر الإنسان إلى طعامه' }, { t: 2.5, text: 'صُبَّ الماء على الأرض صبًّا', q: 'صببنا الماء صبا' },
+      { t: 7, text: 'ثم شُقَّت الأرض بما خرج منها من نبات', q: 'شققنا الأرض شقا' }, { t: 11.5, text: 'فنبت فيها الحَبّ', q: 'فأنبتنا فيها حبا' },
+      { t: 14.5, text: 'والعنب وعلف الدوابّ', q: 'وعنبا وقضبا' }, { t: 18, text: 'والزيتون والنخل', q: 'وزيتونا ونخلا' },
+      { t: 22.5, text: 'وحدائق عظيمة الأشجار', q: 'وحدائق غلبا' }, { t: 26.5, text: 'وثمار وكلأ', q: 'وفاكهة وأبا' }, { t: 30, text: 'متاعًا لكم ولأنعامكم', q: 'متاعا لكم ولأنعامكم' },
+    ],
+    omitted: ['الإنسان والأنعام لا يُصوَّرون.'],
+  },
+  {
+    id: 'adjacent-plots', title: 'قِطَعٌ متجاورات', cat: 'آيات كونية', ref: { s: 13, from: 4, to: 4 }, duration: 30, horizon: 0.7,
+    sky: [{ t: 0, mode: 'day' }],
+    elements: [
+      { type: 'sun', x: 0.12, y: 0.13 }, { type: 'clouds', count: 3, y: 0.13, size: 0.75 }, { type: 'mountains', count: 3, seed: 47, size: 0.6 },
+      { type: 'ground', x0: 0.2, x1: 1, green: 0.75, cracks: false }, { type: 'ground', x0: 0, x1: 0.2, color: '#c9c0ad', green: 0 },
+      { type: 'river', from: 17, to: 21, size: 0.45, y: 0.75 },
+      { type: 'plants', kind: 'grass', ...pre, count: 22, x0: 0.22, x1: 0.98, depth: 0.4 },
+      { type: 'tree', kind: 'vine', x: 0.88, size: 1.3, growFrom: 5, growTo: 9, fruit: true, fruitFrom: 22 }, { type: 'tree', kind: 'vine', x: 0.74, size: 1.1, growFrom: 5.5, growTo: 9.5, fruit: true, fruitFrom: 22.5 },
+      { type: 'plants', kind: 'crop', growFrom: 9, growTo: 12.5, count: 16, x0: 0.52, x1: 0.66, depth: 0.5, seed: 2 },
+      { type: 'tree', kind: 'palm', twin: true, x: 0.42, size: 0.85, growFrom: 12, growTo: 16, fruit: true, fruitFrom: 23 },
+      { type: 'tree', kind: 'palm', x: 0.28, size: 0.95, growFrom: 13.5, growTo: 17, fruit: true, fruitFrom: 23.5 },
+      { type: 'label', text: 'صِنوان', x: 0.44, y: 0.16, from: 14, until: 21 }, { type: 'label', text: 'غير صِنوان', x: 0.22, y: 0.24, from: 15.5, until: 21 },
+    ],
+    captions: [
+      { t: 0, text: 'في الأرض قطع يجاور بعضها بعضًا: منها الطيّب، ومنها السَّبِخ الذي لا يُنبت', q: 'وفي الأرض قطع متجاورات' },
+      { t: 5, text: 'وبساتين من أعناب', q: 'وجنات من أعناب' }, { t: 9, text: 'وزروع مختلفة', q: 'وزرع' },
+      { t: 12.5, text: 'ونخيل مجتمع في منبت واحد، وغير مجتمع', q: 'ونخيل صنوان وغير صنوان' }, { t: 17.5, text: 'كل ذلك في تربة واحدة ويشرب من ماء واحد', q: 'يسقى بماء واحد' },
+      { t: 22.5, text: 'ويختلف في الثمار والطعم، وبعضها أفضل من بعض في الأكل', q: 'ونفضل بعضها على بعض في الأكل' },
+    ],
+    omitted: [],
+  },
+);
+
+// اللفظ القرآني المقابل لكل لقطة في مشاهد الإصدار الأول (بالرسم الإملائي؛ يُطابَق آليًا مع المصحف)
+const Q = {
+  'rain-revival': ['لبلد ميت', 'يرسل الرياح بشرا بين يدي رحمته', 'أقلت سحابا ثقالا', 'سقناه لبلد ميت', 'فأنزلنا به الماء', 'فأخرجنا به من كل الثمرات', 'كذلك نخرج الموتى لعلكم تذكرون'],
+  'earth-stirs': ['ترى الأرض خاشعة', 'أنزلنا عليها الماء', 'اهتزت', 'وربت', 'إن الذي أحياها لمحيي الموتى'],
+  'night-day-orbits': [null, 'الليل نسلخ منه النهار', 'فإذا هم مظلمون', 'والشمس تجري لمستقر لها', 'والقمر قدرناه منازل', 'حتى عاد كالعرجون القديم', 'لا الشمس ينبغي لها أن تدرك القمر ولا الليل سابق النهار', 'وكل في فلك يسبحون'],
+  'cradle-pegs': ['الأرض مهادا', 'والجبال أوتادا'],
+  bees: ['اتخذي من الجبال بيوتا ومن الشجر ومما يعرشون', 'كلي من كل الثمرات', 'فاسلكي سبل ربك ذللا', 'يخرج من بطونها شراب مختلف ألوانه', 'فيه شفاء للناس'],
+  'good-tree': ['كلمة طيبة كشجرة طيبة', 'أصلها ثابت', 'وفرعها في السماء', 'تؤتي أكلها كل حين بإذن ربها', 'ويضرب الله الأمثال للناس'],
+  'seven-ears': ['كمثل حبة', 'أنبتت', 'سبع سنابل', 'في كل سنبلة مائة حبة', 'والله يضاعف لمن يشاء'],
+  'garden-hill': ['كمثل جنة بربوة', 'أصابها وابل', 'فآتت أكلها ضعفين', 'فإن لم يصبها وابل فطل', 'ينفقون أموالهم ابتغاء مرضات الله'],
+  'deep-darkness': ['في بحر لجي', 'يغشاه موج', 'من فوقه موج', 'من فوقه سحاب', 'ظلمات بعضها فوق بعض', 'ومن لم يجعل الله له نورا فما له من نور'],
+  'two-seas': ['البحرين', 'مرج البحرين يلتقيان', 'بينهما برزخ', 'لا يبغيان'],
+  'flood-foam': ['أنزل من السماء ماء', 'فسالت أودية بقدرها', 'فاحتمل السيل زبدا رابيا', 'فأما الزبد فيذهب جفاء', 'وأما ما ينفع الناس فيمكث في الأرض', 'كذلك يضرب الله الحق والباطل'],
+  'spider-house': ['العنكبوت اتخذت بيتا', null, null, 'وإن أوهن البيوت لبيت العنكبوت', 'الذين اتخذوا من دون الله أولياء'],
+  'worldly-life': ['كماء أنزلناه من السماء', 'فاختلط به نبات الأرض', null, 'فأصبح هشيما', 'تذروه الرياح', 'مثل الحياة الدنيا'],
+  'ashes-wind': ['كرماد', 'اشتدت به الريح في يوم عاصف', 'لا يقدرون مما كسبوا على شيء', 'الذين كفروا بربهم أعمالهم'],
+  'sun-moon': ['جعل الشمس ضياء', null, 'والقمر نورا', 'وقدره منازل', 'لتعلموا عدد السنين والحساب'],
+  'one-water': ['أنزل من السماء ماء', 'لكم منه شراب ومنه شجر', 'ينبت لكم به الزرع', 'والزيتون', 'والنخيل', 'والأعناب', 'ومن كل الثمرات'],
+};
+for (const s of LIBRARY) (Q[s.id] || []).forEach((q, i) => { if (q && s.captions[i]) s.captions[i].q = q; });
+
+// لحظة الصورة المصغّرة لكل مشهد (نسبة من مدته) حين لا تصلح اللحظة الافتراضية
+const THUMB = { 'ashes-wind': 0.3, 'evil-tree': 0.3, mirage: 0.35, 'worldly-life': 0.42, 'spider-house': 0.3, shadow: 0.5, 'bare-rock': 0.2, 'springs-crop': 0.5, 'deep-darkness': 0.45 };
+for (const s of LIBRARY) if (THUMB[s.id]) s.thumb = THUMB[s.id];

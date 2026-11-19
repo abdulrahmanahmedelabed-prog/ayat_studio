@@ -14,13 +14,13 @@ function createWindow() {
   });
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:/.test(url)) shell.openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('app://')) e.preventDefault(); });
-  win.loadURL('app://mashhadaya/index.html');
+  win.loadURL('app://mashhadaya/app.html');
 }
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   protocol.handle('app', (req) => {
-    const rel = decodeURIComponent(new URL(req.url).pathname).replace(/^\/+/, '') || 'index.html';
+    const rel = decodeURIComponent(new URL(req.url).pathname).replace(/^\/+/, '') || 'app.html';
     const file = path.normalize(path.join(DIST, rel));
     if (!file.startsWith(DIST)) return new Response('forbidden', { status: 403 });
     return net.fetch(pathToFileURL(file).toString());

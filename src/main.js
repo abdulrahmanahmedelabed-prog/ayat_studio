@@ -7,6 +7,7 @@ import { Player, drawScene } from './engine/render.js';
 import { LIBRARY } from './scenes/library.js';
 import { POLICY, TYPE_NAMES, checkScene } from './agents/rules.js';
 import { runOffline } from './agents/offline.js';
+import { alignAyah, findPhrase } from './words.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const h = (tag, attrs = {}, ...kids) => {
@@ -40,9 +41,17 @@ async function ayat(ref) {
 // ───────── المشغّل ─────────
 let current = null; // المشغّل الظاهر حاليًا
 function verseBlock(A) {
-  return h('section', { class: 'verse' },
-    h('p', { class: 'quran', lang: 'ar' }, A.rows.flatMap((r) => [r.text, ' ۝' + AR(r.a) + ' '])),
-    h('p', { class: 'ref' }, A.refText));
+  // كل كلمة في عنصر مستقل لتُظلَّل مع اللقطة المقابلة لها؛ النص نفسه لا يُمسّ.
+  const words = [], spans = [], kids = [], END = String.fromCharCode(0x06DD);
+  for (const r of A.rows) {
+    const al = alignAyah(r.text, r.clean);
+    if (al) for (const w of al) { const sp = h('span', { class: 'w' }, w.u); words.push(w); spans.push(sp); kids.push(sp, ' '); }
+    else { kids.push(r.text, ' '); words.push({ c: '#' }); spans.push(null); }
+    kids.push(END + AR(r.a) + ' ');
+  }
+  const el = h('section', { class: 'verse' }, h('p', { class: 'quran', lang: 'ar' }, kids), h('p', { class: 'ref' }, A.refText));
+  el.mark = (q) => { const m = q ? findPhrase(words, q) : null; spans.forEach((sp, i) => sp?.classList.toggle('hl', !!m && i >= m[0] && i <= m[1])); };
+  return el;
 }
 function tafsirBlock(A) {
   return h('section', { class: 'panel' }, h('h3', {}, 'التفسير الميسّر'),
@@ -50,7 +59,7 @@ function tafsirBlock(A) {
     h('p', { class: 'src' }, 'المصدر: التفسير الميسّر — نخبة من العلماء، مجمع الملك فهد لطباعة المصحف الشريف.'));
 }
 const AGENT_NAMES = { tafsir: 'جامع التفسير', review: 'المراجع الشرعي', paint: 'الرسّام', animate: 'المحرّك', final: 'المراجعة الختامية' };
-function reportBlock(rep) {
+function reportBlock(rep, seek) {
   const li = (xs) => h('ul', {}, xs.map((x) => h('li', {}, x)));
   const card = (name, role, ...body) => h('article', { class: 'agent' }, h('h4', {}, name, h('small', {}, role)), ...body);
   const rv = rep.review || {};
@@ -67,7 +76,7 @@ function reportBlock(rep) {
       rv.reasons?.length ? li(rv.reasons) : null, rv.note ? h('p', {}, rv.note) : null),
     card(AGENT_NAMES.paint, 'يؤلّف المشهد من المفردات الكونية', h('p', {}, [...new Set(rep.paint?.elements || [])].join('، ') || '—'), rep.paint?.notes ? h('p', {}, rep.paint.notes) : null),
     card(AGENT_NAMES.animate, 'يرتّب الحركة على ترتيب المعاني', h('p', {}, rep.animate ? `${AR(rep.animate.duration)} ثانية · ${AR(rep.animate.beats)} لقطات` : '—'),
-      rep.timeline ? h('ol', { class: 'timeline' }, rep.timeline.map((c) => h('li', {}, h('time', {}, AR(Math.round(c.t)) + 'ث'), c.text))) : null));
+      rep.timeline ? h('ol', { class: 'timeline' }, rep.timeline.map((c) => h('li', {}, h('button', { onclick: () => seek?.(c.t + 0.05), 'aria-label': 'انتقل إلى هذه اللقطة' }, h('time', {}, AR(Math.round(c.t)) + 'ث'), c.text)))) : null));
 }
 
 function playerView({ title, scene, A, report }) {
@@ -77,12 +86,13 @@ function playerView({ title, scene, A, report }) {
   const time = h('span', { class: 'time' });
   const playBtn = h('button', { class: 'play', 'aria-label': 'تشغيل' });
   let lastCap = null;
+  const verse = verseBlock(A);
   const p = new Player(canvas, (t, pl) => {
     bar.value = t; time.textContent = `${AR(Math.floor(t))} / ${AR(Math.round(scene.duration))} ث`;
     playBtn.dataset.state = pl.playing ? 'pause' : t >= scene.duration - 0.05 ? 'replay' : 'play';
     playBtn.setAttribute('aria-label', pl.playing ? 'إيقاف مؤقت' : 'تشغيل');
     let c = null; for (const x of scene.captions) if (x.t <= t) c = x;
-    if (c !== lastCap) { lastCap = c; cap.textContent = c ? c.text : ''; cap.classList.remove('in'); void cap.offsetWidth; if (c) cap.classList.add('in'); }
+    if (c !== lastCap) { lastCap = c; cap.textContent = c ? c.text : ''; cap.classList.remove('in'); void cap.offsetWidth; if (c) cap.classList.add('in'); verse.mark(c?.q); }
   });
   bar.addEventListener('input', () => p.seek(+bar.value));
   playBtn.addEventListener('click', () => p.toggle());
@@ -95,7 +105,7 @@ function playerView({ title, scene, A, report }) {
   return h('div', { class: 'player' },
     h('div', { class: 'col-stage' }, wrap, h('div', { class: 'controls' }, playBtn, bar, time, speed, full),
       h('p', { class: 'note' }, 'المشهد وسيلة إيضاح للمعنى وليس تفسيرًا. المرجع هو التفسير أدناه وأهل العلم.')),
-    h('div', { class: 'col-text' }, h('h2', {}, title), verseBlock(A), tafsirBlock(A), reportBlock(report)));
+    h('div', { class: 'col-text' }, h('h2', {}, title), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, tafsirBlock(A), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
 }
 
 function curatedReport(item, A) {
@@ -198,7 +208,7 @@ function pageAbout() {
       h('li', {}, 'التفسير: التفسير الميسّر، مجمع الملك فهد لطباعة المصحف الشريف (عبر QUL / Tarteel).'),
       h('li', {}, 'الخطوط: Amiri Quran و Tajawal برخصة SIL OFL.'),
       h('li', {}, 'شروح المشاهد صياغة مختصرة لمعنى التفسير الميسّر، وليست نصًّا قرآنيًا ولا تفسيرًا مستقلًا.'))),
-    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ١٫٠٫٠')));
+    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ١٫١٫٠')));
 }
 
 // ───────── التنقّل ─────────

@@ -3,7 +3,7 @@
 # aapt2 (موارد) + javac + dx (بايت‌كود) + محاذاة + توقيع apksig. يحتاج JDK 17+ و python3 و curl.
 set -euo pipefail
 cd "$(dirname "$0")"
-VERSION=$(node -p "require('../package.json').version"); CODE=${VERSION_CODE:-1}
+VERSION=$(node -p "require('../package.json').version"); CODE=${VERSION_CODE:-$(node -p "require('../package.json').version.split('.').reduce((a,b)=>a*100+ +b,0)")}
 T=.tools; B=build; mkdir -p $T; rm -rf $B; mkdir -p $B/classes $B/assets
 get() { [ -s "$T/$1" ] || { echo "↓ $1"; curl -fsSL --retry 3 -o "$T/$1" "$2"; }; }
 get android.jar https://raw.githubusercontent.com/Sable/android-platforms/master/android-34/android.jar

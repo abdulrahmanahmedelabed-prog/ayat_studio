@@ -55,8 +55,8 @@ public class MainActivity extends Activity {
                 Uri u = r.getUrl();
                 if (!HOST.equals(u.getHost())) return null;
                 String p = u.getPath();
-                if (p == null || p.equals("/")) p = "/index.html";
-                if (p.contains("..")) p = "/index.html";
+                if (p == null || p.equals("/")) p = "/app.html";
+                if (p.contains("..")) p = "/app.html";
                 String m = mime(p);
                 boolean text = m.startsWith("text/") || m.contains("json") || m.contains("svg");
                 try {
@@ -95,7 +95,7 @@ public class MainActivity extends Activity {
         };
         web.setWebChromeClient(chrome);
         setContentView(web);
-        if (state != null) web.restoreState(state); else web.loadUrl("https://" + HOST + "/index.html");
+        if (state != null) web.restoreState(state); else web.loadUrl("https://" + HOST + "/app.html");
     }
 
     @Override

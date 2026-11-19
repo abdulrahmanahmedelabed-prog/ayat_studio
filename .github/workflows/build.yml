@@ -37,7 +37,6 @@ jobs:
       - run: npm run dist:android
         env:
           KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS || 'mashhadaya' }}
-          VERSION_CODE: ${{ github.run_number }}
       - uses: actions/upload-artifact@v4
         with: { name: mashhadaya-android, path: release/*.apk }
       - uses: actions/upload-artifact@v4

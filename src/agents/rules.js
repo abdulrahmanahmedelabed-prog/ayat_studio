@@ -15,7 +15,7 @@ export const POLICY = [
 export const TYPE_NAMES = {
   stars: 'نجوم', sun: 'شمس', moon: 'قمر', clouds: 'سحاب', rain: 'مطر', lightning: 'برق', wind: 'رياح', mountains: 'جبال', ground: 'أرض',
   plants: 'نبات', tree: 'شجر', grain: 'حبة وسنابل', sea: 'بحر', twoSeas: 'بحران', ship: 'سفينة', river: 'وادٍ وسيل', bees: 'نحل (نقاط) وخلية',
-  web: 'بيت العنكبوت', ashes: 'رماد', orbits: 'أفلاك', depths: 'أعماق البحر', label: 'تسمية نصّية',
+  web: 'بيت العنكبوت', ashes: 'رماد', hail: 'بَرَد', rock: 'صفوان (حجر أملس)', shadow: 'ظل', mirage: 'سراب', sprout: 'حبة/نواة تنفلق', bitter: 'شجرة الحنظل', orbits: 'أفلاك', depths: 'أعماق البحر', label: 'تسمية نصّية',
 };
 
 export const strip = (s) => s.replace(/[ً-ٰٟۖ-ۭـ]/g, '').replace(/[ٱأإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه');
@@ -38,14 +38,16 @@ export function textBarriers(clean) {
 }
 
 // تنقية مشهد وارد من النموذج: قائمة بيضاء للعناصر وحدود للأرقام.
-const NUM = { from: [0, 60], to: [0, 60], until: [0, 60], x: [-0.3, 1.3], y: [0, 1], x0: [-0.5, 1.5], x1: [-0.5, 1.5], size: [0.3, 2.4], count: [1, 60], intensity: [0.1, 2], dark: [0, 1], darkTo: [0, 1], green: [0, 1], greenFrom: [-10, 60], greenTo: [-10, 60], growFrom: [-10, 60], growTo: [-10, 60], witherFrom: [0, 60], witherTo: [0, 60], fruitFrom: [-10, 60], rootsFrom: [-10, 60], swell: [0, 1], hill: [0, 1], seed: [1, 9999], storm: [0, 4], stormTo: [0, 4], layers: [2, 7], dy: [-0.3, 0.5], windFrom: [0, 60], tearFrom: [0, 60], tearTo: [0, 60], foamFadeFrom: [0, 60], foamFadeTo: [0, 60], blowFrom: [0, 60], dryFrom: [0, 60], dryTo: [0, 60], depth: [0.05, 1], barrierFrom: [0, 60], drift: [0, 3], phase: [0, 1] };
-const BOOL = ['gather', 'snow', 'roots', 'fruit', 'row', 'foam', 'scatter', 'tall', 'cracks'];
-const ENUM = { motion: ['still', 'rise', 'set', 'arc'], kind: ['grass', 'crop', 'flowers', 'broad', 'palm', 'olive', 'vine'], phase: ['cycle', 'wax', 'wane'] };
+const NUM = { from: [0, 60], to: [0, 60], until: [0, 60], x: [-0.3, 1.3], y: [0, 1], x0: [-0.5, 1.5], x1: [-0.5, 1.5], size: [0.3, 2.4], count: [1, 60], intensity: [0.1, 2], dark: [0, 1], darkTo: [0, 1], green: [0, 1], greenFrom: [-10, 60], greenTo: [-10, 60], growFrom: [-10, 60], growTo: [-10, 60], witherFrom: [0, 60], witherTo: [0, 60], fruitFrom: [-10, 60], rootsFrom: [-10, 60], swell: [0, 1], hill: [0, 1], seed: [1, 9999], storm: [0, 4], stormTo: [0, 4], layers: [2, 7], dy: [-0.3, 0.5], windFrom: [0, 60], tearFrom: [0, 60], tearTo: [0, 60], foamFadeFrom: [0, 60], foamFadeTo: [0, 60], blowFrom: [0, 60], dryFrom: [0, 60], washFrom: [0, 60], washTo: [0, 60], fadeFrom: [0, 60], fadeTo: [0, 60], uprootFrom: [0, 60], uprootTo: [0, 60], slackFrom: [0, 60], streakFrom: [-5, 60], lean: [-2, 2], dryTo: [0, 60], depth: [0.05, 1], barrierFrom: [0, 60], drift: [0, 3], phase: [0, 1] };
+const BOOL = ['gather', 'snow', 'roots', 'fruit', 'row', 'foam', 'scatter', 'tall', 'cracks', 'streaks', 'twin', 'poor'];
+const ENUM = { motion: ['still', 'rise', 'set', 'arc'], kind: ['grass', 'crop', 'flowers', 'broad', 'palm', 'olive', 'vine', 'grain', 'stone'], phase: ['cycle', 'wax', 'wane'] };
 
 export function sanitizeScene(raw) {
   const out = { duration: clamp(+raw?.duration || 24, 10, 45), elements: [], captions: [], sky: [] };
   if (raw?.horizon != null) out.horizon = clamp(+raw.horizon, 0.3, 0.85);
   for (const k of raw?.sky || []) if (SKY[k?.mode]) out.sky.push({ t: clamp(+k.t || 0, 0, out.duration), mode: k.mode });
+  for (const k of (raw?.camera || []).slice(0, 8)) if (k && isFinite(+k.t)) (out.camera ||= []).push({ t: clamp(+k.t, 0, out.duration), zoom: clamp(+k.zoom || 1, 1, 2), x: clamp(k.x == null ? 0.5 : +k.x, 0, 1), y: clamp(k.y == null ? 0.5 : +k.y, 0, 1) });
+  out.camera?.sort((a, b) => a.t - b.t);
   out.sky.sort((a, b) => a.t - b.t); if (!out.sky.length) out.sky = [{ t: 0, mode: 'day' }];
   const dropped = [];
   for (const el of (raw?.elements || []).slice(0, 26)) {
