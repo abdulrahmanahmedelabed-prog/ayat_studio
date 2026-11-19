@@ -473,6 +473,91 @@ LIBRARY.push(
   },
 );
 
+// ───────── مشاهد الإصدار ١٫٣ ─────────
+LIBRARY.push(
+  {
+    id: 'shams', title: 'والشمس وضحاها', cat: 'آيات كونية', ref: { s: 91, from: 1, to: 4 }, duration: 30,
+    sky: [{ t: 0, mode: 'dawn' }, { t: 5, mode: 'day' }, { t: 12, mode: 'day' }, { t: 15, mode: 'dusk' }, { t: 18, mode: 'night' }, { t: 21.5, mode: 'dawn' }, { t: 25, mode: 'day' }],
+    elements: [
+      { type: 'stars', from: 16, until: 23 }, { type: 'sun', motion: 'arc', x0: 0.1, x1: 0.9, from: 0, to: 16, until: 16.2 },
+      { type: 'moon', motion: 'arc', x0: 0.06, x1: 0.84, phase: 0.5, from: 9, to: 22, until: 22.5 },
+      { type: 'sun', motion: 'rise', x0: 0.1, x1: 0.4, from: 21.5, to: 30 },
+      { type: 'mountains', count: 4, seed: 101, size: 0.7 }, { type: 'ground', green: 0.6, cracks: false }, { type: 'plants', kind: 'grass', ...pre, count: 28 },
+    ],
+    captions: [
+      { t: 0, text: 'الشمس وإشراقها ضحى', q: 'والشمس وضحاها' }, { t: 9, text: 'والقمر إذا تبعها في طلوعه ومغيبه', q: 'والقمر إذا تلاها' },
+      { t: 16, text: 'والليل حين يغطي الأرض فيكون ما عليها مظلمًا', q: 'والليل إذا يغشاها' }, { t: 22, text: 'والنهار إذا جلّى الظلمة وكشفها', q: 'والنهار إذا جلاها' },
+    ],
+    omitted: ['رُتّبت اللقطات على تتابع الظواهر في السماء؛ لقطة الليل قبل النهار وفي الآيات النهار قبل الليل.'],
+  },
+  {
+    id: 'dawn-split', title: 'فالق الإصباح', cat: 'آيات كونية', ref: { s: 6, from: 96, to: 96 }, duration: 28,
+    sky: [{ t: 0, mode: 'night' }, { t: 3, mode: 'night' }, { t: 8, mode: 'dawn' }, { t: 12, mode: 'day' }, { t: 15, mode: 'dusk' }, { t: 18, mode: 'night' }],
+    elements: [
+      { type: 'stars', until: 9 }, { type: 'stars', from: 16.5, seed: 4 }, { type: 'sun', motion: 'rise', x0: 0.4, x1: 0.5, from: 5, to: 13, until: 14.5 },
+      { type: 'orbits', from: 18 }, { type: 'mountains', count: 4, seed: 66, size: 0.75 }, { type: 'ground', green: 0.5, cracks: false }, { type: 'plants', kind: 'grass', ...pre, count: 22 },
+    ],
+    captions: [
+      { t: 0, text: 'ظلام الليل' }, { t: 4, text: 'يشقّ الله ضياء الصباح من ظلام الليل', q: 'فالق الإصباح' },
+      { t: 14, text: 'وجعل الليل مستقرًّا يسكن فيه من تعب بالنهار', q: 'وجعل الليل سكنا' },
+      { t: 18.5, text: 'وجعل الشمس والقمر يجريان بحساب متقن لا يتغير ولا يضطرب', q: 'والشمس والقمر حسبانا' }, { t: 24, text: 'ذلك تقدير العزيز العليم', q: 'ذلك تقدير العزيز العليم' },
+    ],
+    omitted: [],
+  },
+  {
+    id: 'two-signs', title: 'الليل والنهار آيتين', cat: 'آيات كونية', ref: { s: 17, from: 12, to: 12 }, duration: 27,
+    sky: [{ t: 0, mode: 'night' }, { t: 6, mode: 'night' }, { t: 10, mode: 'dawn' }, { t: 13, mode: 'day' }, { t: 19, mode: 'day' }, { t: 22, mode: 'dusk' }, { t: 24.5, mode: 'night' }],
+    elements: [
+      { type: 'stars', until: 11 }, { type: 'stars', from: 23, seed: 9 }, { type: 'moon', x: 0.7, y: 0.2, phase: 0.5, until: 10 },
+      { type: 'sun', motion: 'arc', x0: 0.08, x1: 0.92, from: 8.5, to: 24.5, until: 24.5 },
+      { type: 'mountains', count: 3, seed: 13, size: 0.7 }, { type: 'ground', green: 0.65, cracks: false },
+      { type: 'plants', kind: 'flowers', ...pre, count: 26 }, { type: 'tree', x: 0.2, size: 0.9, ...pre, fruit: true, fruitFrom: -1 },
+    ],
+    captions: [
+      { t: 0, text: 'جعل الله الليل والنهار علامتين', q: 'وجعلنا الليل والنهار آيتين' },
+      { t: 4.5, text: 'فمحا علامة الليل — وهي القمر — بضوء النهار', q: 'فمحونا آية الليل' },
+      { t: 11, text: 'وجعل علامة النهار — وهي الشمس — مضيئة يُبصَر بها', q: 'وجعلنا آية النهار مبصرة' },
+      { t: 16, text: 'ليبتغي الناس فضل ربهم في معاشهم', q: 'لتبتغوا فضلا من ربكم' }, { t: 21.5, text: 'وليعلموا من تعاقبهما عدد السنين والحساب', q: 'ولتعلموا عدد السنين والحساب' },
+    ],
+    omitted: ['الناس الساعون في معاشهم لا يُصوَّرون.'],
+  },
+  {
+    id: 'pollinating-winds', title: 'الرياح لواقح', cat: 'آيات كونية', ref: { s: 15, from: 22, to: 22 }, duration: 27,
+    sky: [{ t: 0, mode: 'day' }, { t: 8, mode: 'day' }, { t: 12, mode: 'storm' }, { t: 19, mode: 'storm' }, { t: 23, mode: 'day' }],
+    elements: [
+      { type: 'sun', x: 0.86, y: 0.13, until: 11 }, { type: 'mountains', count: 3, seed: 27, size: 0.75 }, { type: 'ground', green: 0.55, cracks: false },
+      { type: 'wind', from: 0, until: 13, intensity: 1.3 },
+      { type: 'tree', x: 0.2, size: 0.9, ...pre, fruit: true, fruitFrom: 3, fruitColor: '#f6c6d0' }, { type: 'tree', x: 0.78, size: 1, ...pre, fruit: true, fruitFrom: 3.5, fruitColor: '#f8e3ea' },
+      { type: 'plants', kind: 'flowers', growFrom: 2, growTo: 7, count: 22 },
+      { type: 'clouds', from: 6, to: 11, gather: true, count: 6, dark: 0.15, darkTo: 0.8, y: 0.12, until: 23 }, { type: 'rain', from: 12, until: 19.5 },
+      { type: 'river', from: 15, to: 20, size: 0.5, y: 0.78 },
+    ],
+    captions: [
+      { t: 0, text: 'أرسل الله الرياح', q: 'وأرسلنا الرياح' }, { t: 3, text: 'تُلقّح الشجر فيتفتّح عن أوراقه وأكمامه', q: 'لواقح' },
+      { t: 7, text: 'وتُلقّح السحاب فيدرّ بالماء', q: 'لواقح' }, { t: 12, text: 'فأنزل من السحاب ماء', q: 'فأنزلنا من السماء ماء' },
+      { t: 15.5, text: 'أعدّه لشرابكم وأرضكم ومواشيكم', q: 'فأسقيناكموه' }, { t: 21, text: 'وما أنتم بقادرين على خزنه، ولكن الله يحفظه لكم', q: 'وما أنتم له بخازنين' },
+    ],
+    omitted: [],
+  },
+  {
+    id: 'harvest', title: 'أأنتم تزرعونه', cat: 'آيات كونية', ref: { s: 56, from: 63, to: 65 }, duration: 26, horizon: 0.6,
+    sky: [{ t: 0, mode: 'dawn' }, { t: 6, mode: 'day' }, { t: 16, mode: 'day' }, { t: 21, mode: 'dusk' }],
+    camera: [{ t: 0, zoom: 1.4, x: 0.5, y: 0.75 }, { t: 6, zoom: 1.4, x: 0.5, y: 0.72 }, { t: 10, zoom: 1 }],
+    elements: [
+      { type: 'sun', motion: 'rise', x0: 0.15, x1: 0.5, to: 18 }, { type: 'mountains', count: 3, seed: 59, size: 0.6 }, { type: 'ground', green: 0.15, greenFrom: 4, greenTo: 10, dryFrom: 16, dryTo: 23, cracks: false },
+      { type: 'sprout', kind: 'grain', x: 0.5, size: 0.8, from: 0.5, to: 6, until: 8 },
+      { type: 'plants', kind: 'crop', growFrom: 5, growTo: 12, witherFrom: 16, witherTo: 23, scatter: true, count: 48, x0: 0.02, x1: 0.98 },
+      { type: 'wind', from: 19.5, intensity: 1.4 },
+    ],
+    captions: [
+      { t: 0, text: 'الحرث الذي يُحرث ويُزرع', q: 'أفرأيتم ما تحرثون' }, { t: 5, text: 'من الذي يُنبته في الأرض ويُقرّ قراره؟', q: 'أأنتم تزرعونه أم نحن الزارعون' },
+      { t: 12, text: 'الله هو الذي يُنبته' }, { t: 16, text: 'لو شاء لجعله هشيمًا لا يُنتفع به', q: 'لو نشاء لجعلناه حطاما' },
+      { t: 22, text: 'فيتعجّب أصحابه مما نزل بزرعهم', q: 'فظلتم تفكهون' },
+    ],
+    omitted: ['الزُّرّاع لا يُصوَّرون. المشهد يعرض «لو نشاء» حالًا ممكنة، لا خبرًا عن وقوعها.'],
+  },
+);
+
 // اللفظ القرآني المقابل لكل لقطة في مشاهد الإصدار الأول (بالرسم الإملائي؛ يُطابَق آليًا مع المصحف)
 const Q = {
   'rain-revival': ['لبلد ميت', 'يرسل الرياح بشرا بين يدي رحمته', 'أقلت سحابا ثقالا', 'سقناه لبلد ميت', 'فأنزلنا به الماء', 'فأخرجنا به من كل الثمرات', 'كذلك نخرج الموتى لعلكم تذكرون'],
@@ -495,5 +580,5 @@ const Q = {
 for (const s of LIBRARY) (Q[s.id] || []).forEach((q, i) => { if (q && s.captions[i]) s.captions[i].q = q; });
 
 // لحظة الصورة المصغّرة لكل مشهد (نسبة من مدته) حين لا تصلح اللحظة الافتراضية
-const THUMB = { 'ashes-wind': 0.3, 'evil-tree': 0.3, mirage: 0.35, 'worldly-life': 0.42, 'spider-house': 0.3, shadow: 0.5, 'bare-rock': 0.2, 'springs-crop': 0.5, 'deep-darkness': 0.45 };
+const THUMB = { harvest: 0.42, 'two-signs': 0.6, 'dawn-split': 0.4, shams: 0.25, 'ashes-wind': 0.3, 'evil-tree': 0.3, mirage: 0.35, 'worldly-life': 0.42, 'spider-house': 0.3, shadow: 0.5, 'bare-rock': 0.2, 'springs-crop': 0.5, 'deep-darkness': 0.45 };
 for (const s of LIBRARY) if (THUMB[s.id]) s.thumb = THUMB[s.id];

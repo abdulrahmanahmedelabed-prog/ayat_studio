@@ -8,6 +8,7 @@ import { LIBRARY } from './scenes/library.js';
 import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS } from './agents/rules.js';
 import { runOffline } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
+import { strip } from './agents/rules.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const h = (tag, attrs = {}, ...kids) => {
@@ -98,14 +99,53 @@ function playerView({ title, scene, A, report }) {
   playBtn.addEventListener('click', () => p.toggle());
   const speed = h('button', { class: 'ghost', onclick: () => { p.speed = p.speed === 1 ? 0.5 : 1; speed.textContent = p.speed === 1 ? 'سرعة ×١' : 'سرعة ×½'; } }, 'سرعة ×١');
   const wrap = h('div', { class: 'stagewrap' }, canvas, cap);
+  const canRec = typeof MediaRecorder !== 'undefined' && !!canvas.captureStream && !/; wv\)/.test(navigator.userAgent);
+  const rec = canRec ? h('button', { class: 'ghost', onclick: () => recordVideo(p, scene, title, rec) }, 'حفظ فيديو') : null;
   const full = h('button', { class: 'ghost', onclick: () => (document.fullscreenElement ? document.exitFullscreen() : wrap.requestFullscreen?.()) }, 'ملء الشاشة');
   canvas.addEventListener('click', () => p.toggle());
   current = p;
   queueMicrotask(() => { p.setScene(scene); setTimeout(() => p.play(), 350); });
   return h('div', { class: 'player' },
-    h('div', { class: 'col-stage' }, wrap, h('div', { class: 'controls' }, playBtn, bar, time, speed, full),
+    h('div', { class: 'col-stage' }, wrap, h('div', { class: 'controls' }, playBtn, bar, time, speed, full, rec),
       h('p', { class: 'note' }, 'المشهد وسيلة إيضاح للمعنى وليس تفسيرًا. المرجع هو التفسير أدناه وأهل العلم.')),
     h('div', { class: 'col-text' }, h('h2', {}, title), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, tafsirBlock(A), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
+}
+
+// يسجّل المشهد كاملًا فيديو WebM مع الشروح مرسومة عليه، ثم ينزّله.
+async function recordVideo(p, scene, title, btn) {
+  if (btn.disabled) return;
+  const W = 1280, H = 720, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d'), stream = cv.captureStream(30);
+  const type = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find((t) => MediaRecorder.isTypeSupported(t));
+  if (!type) { btn.textContent = 'التسجيل غير مدعوم'; return; }
+  const mr = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6e6 }), chunks = [];
+  mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  const label = btn.textContent; btn.disabled = true; p.pause();
+  const done = new Promise((r) => (mr.onstop = r));
+  mr.start(500);
+  const t0 = performance.now();
+  await new Promise((resolve) => {
+    const frame = () => {
+      const t = Math.min(scene.duration, (performance.now() - t0) / 1000);
+      drawScene(ctx, W, H, scene, t);
+      let c = null; for (const x of scene.captions) if (x.t <= t) c = x;
+      if (c) {
+        const g = ctx.createLinearGradient(0, H - 150, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.75)');
+        ctx.fillStyle = g; ctx.fillRect(0, H - 150, W, 150);
+        ctx.font = '700 34px Tajawal, sans-serif'; ctx.textAlign = 'center'; ctx.direction = 'rtl'; ctx.fillStyle = '#fff';
+        ctx.fillText(c.text, W / 2, H - 46, W - 80);
+      }
+      ctx.font = '700 22px Tajawal, sans-serif'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillText('مَشهَدآية', W - 28, 42);
+      btn.textContent = `يسجّل… ${AR(Math.round((t / scene.duration) * 100))}٪`;
+      t < scene.duration ? requestAnimationFrame(frame) : resolve();
+    };
+    frame();
+  });
+  mr.stop(); await done;
+  const blob = new Blob(chunks, { type }), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `${title.replace(/[\\/:*?"<>|]/g, '')}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  btn.textContent = label; btn.disabled = false;
 }
 
 function curatedReport(item, A) {
@@ -181,9 +221,23 @@ async function pageStudio() {
     btn.disabled = false;
   };
   btn.addEventListener('click', run);
+  const C = await load('clean'), q = h('input', { type: 'search', id: 'verse-search', placeholder: 'ابحث في المصحف بكلمة: مطر، النخل، الجبال…', 'aria-label': 'بحث في المصحف' });
+  const hits = h('div', { class: 'hits' });
+  let tmr;
+  q.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => {
+    const term = strip(q.value.trim()); hits.replaceChildren();
+    if (term.length < 2) return;
+    const out = [];
+    for (let si = 0; si < C.length && out.length < 40; si++) for (let ai = 0; ai < C[si].length && out.length < 40; ai++) if (strip(C[si][ai]).includes(term)) out.push([si + 1, ai + 1]);
+    if (!out.length) { hits.append(h('p', { class: 'note' }, 'لا نتائج. جرّب كلمة أقصر أو بغير «ال».')); return; }
+    hits.append(...out.map(([s, a]) => h('button', { class: 'hit', onclick: () => { sel.value = s; from.value = to.value = a; fix(); hits.replaceChildren(); q.value = ''; run(); } },
+      h('b', {}, `${CH[s - 1].name} ${AR(a)}`), h('span', {}, C[s - 1][a - 1].length > 110 ? C[s - 1][a - 1].slice(0, 107) + '…' : C[s - 1][a - 1]))));
+    if (out.length === 40) hits.append(h('p', { class: 'note' }, 'تظهر أول ٤٠ نتيجة.'));
+  }, 220); });
   const tries = [[30, 48, 'الرياح والسحاب'], [35, 27, 'ثمرات وجبال'], [6, 99, 'نبات كل شيء'], [2, 164, 'آيات الكون'], [50, 9, 'ماء مبارك'], [2, 255, 'مثال: آية لا تُصوَّر']];
   mount(h('div', { class: 'page' },
     h('div', { class: 'hero' }, h('h1', {}, 'الاستوديو'), h('p', {}, 'اختر آية، فيعمل عليها أربعة وكلاء بالتتابع: يجمع الأول معناها من التفسير، ويراجعها الثاني شرعًا قبل الرسم وبعده، ويرسم الثالث مشهدها، ويحرّكه الرابع.')),
+    h('div', { class: 'search' }, q, hits),
     h('div', { class: 'form' }, h('label', {}, 'السورة', sel), h('label', {}, 'من الآية', from), h('label', {}, 'إلى', to), btn),
     h('div', { class: 'tries' }, 'جرّب: ', tries.map(([s, a, t]) => h('button', { class: 'chipbtn', onclick: () => { sel.value = s; from.value = to.value = a; run(); } }, `${t} (${CH[s - 1].name} ${AR(a)})`))),
     mode, steps, out));
@@ -215,7 +269,7 @@ function pageAbout() {
       h('li', {}, 'التفسير: التفسير الميسّر، مجمع الملك فهد لطباعة المصحف الشريف (عبر QUL / Tarteel).'),
       h('li', {}, 'الخطوط: Amiri Quran و Tajawal برخصة SIL OFL.'),
       h('li', {}, 'شروح المشاهد صياغة مختصرة لمعنى التفسير الميسّر، وليست نصًّا قرآنيًا ولا تفسيرًا مستقلًا.'))),
-    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ١٫٢٫٠')));
+    h('p', { class: 'ver' }, 'مَشهَدآية · الإصدار ١٫٣٫٠')));
 }
 
 // ───────── التنقّل ─────────

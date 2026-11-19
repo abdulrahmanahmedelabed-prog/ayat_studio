@@ -136,3 +136,12 @@ input:not([type=range]), select { background: var(--raise); border: 1px solid va
 .level input { width: auto; margin-top: 6px; accent-color: var(--gold); }
 .level b { display: block; }
 .level small { display: block; color: var(--muted); font-size: .88rem; line-height: 1.7; }
+
+.search { display: grid; gap: 8px; margin-bottom: 16px; }
+.hits { display: grid; gap: 6px; max-height: 340px; overflow-y: auto; }
+.hits:empty { display: none; }
+.hit { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 10px; text-align: start; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.hit:hover, .hit:focus-visible { border-color: var(--gold); }
+.hit b { color: var(--gold); font-size: .92rem; }
+.hit span { color: #c9d5d2; font-size: .92rem; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .hit { grid-template-columns: 1fr; gap: 2px; } }
