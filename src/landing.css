@@ -56,3 +56,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 .foot { border-top: 1px solid var(--line); padding: 28px 16px 44px; text-align: center; color: var(--muted); font-size: .88rem; display: grid; gap: 8px; }
 .foot p { max-width: 80ch; margin: 0 auto; }
 .foot a { color: var(--gold); }
+
+.feats { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.feats li { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+.feats h3 { font-size: 1.1rem; color: var(--gold); margin-bottom: 6px; }
+.feats p { color: #b8c6c3; font-size: .95rem; }
