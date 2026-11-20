@@ -14,7 +14,7 @@ export const STYLES = {
 // قيود ثابتة في كل وصف: لا ملائكة ولا أجنحة على بشر ولا هالات ولا شخصيات دينية، ولباس محتشم
 export const LOOKOPTS = { grain: true, letterbox: true, intensity: 'dramatic' };
 const INTENSE = { calm: 'calm peaceful atmosphere', dramatic: 'dramatic atmosphere', intense: 'intense dramatic action, raw emotion, storm and fire, battle tension, no blood, no gore, no wounds' };
-export const SAFE = 'no text, no angels, no wings, no halos, no religious figures, no prophets';
+export const SAFE = 'no text, no angels, no winged humans, no halos, no religious figures, no prophets';
 export const SAFE_PEOPLE = 'ordinary humans only, modest traditional Arab clothing with long sleeves, women wearing hijab';
 const NOPEOPLE = 'empty landscape, no people, no humans, no person, no figure, no face';
 const OVERLAY = ['rain', 'hail', 'lightning'];
