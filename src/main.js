@@ -319,7 +319,18 @@ async function pageStudio() {
       const A = await ayat(ref);
       const made = LIBRARY.find((x) => x.ref.s === ref.s && x.ref.from === ref.from && x.ref.to === ref.to);
       let res;
-      if (ai) { const L = await import('./agents/llm.js'); res = await L.runLLM({ ...ai, refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
+      if (ai) {
+        const L = await import('./agents/llm.js');
+        try { res = await L.runLLM({ ...ai, refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
+        catch (err) { if (strict !== 'lenient') throw err; res = { ok: false, aiError: L.explainError(err) }; }
+        // احتياط في «متساهل»: إن تعذّر بناء المشهد بالذكاء الاصطناعي تبنيه الوكلاء دون اتصال
+        if (!res.ok && strict === 'lenient') {
+          const why = res.aiError || (res.report?.review?.reasons || []).join(' — ');
+          STEPS.forEach((id) => { rows[id].dataset.state = 'wait'; rows[id].lastChild.textContent = ''; });
+          res = await runOffline({ clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep);
+          if (res.ok) res.report.review = { ...res.report.review, reasons: [`تعذّر المشهد بالذكاء الاصطناعي (${why})، فبنته الوكلاء دون اتصال.`] };
+        }
+      }
       else res = await runOffline({ clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep);
       if (res.ok) { res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report, ref })); }
       else out.replaceChildren(h('div', { class: 'rejected' }, h('h2', {}, 'هذه الآية لا يُبنى لها مشهد'),
