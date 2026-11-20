@@ -1,4 +1,4 @@
-// فيديو بالذكاء الاصطناعي: Veo عبر مفتاح Gemini، أو نموذج مفتوح المصدر محليًا عبر ComfyUI (Wan / LTX-Video / HunyuanVideo)،
+// فيديو بالذكاء الاصطناعي: Veo عبر مفتاح Gemini،
 // أو تسليم الوصف لمواقع لها رصيد مجاني (يدخلها المستخدم بحسابه).
 export const WEB_TOOLS = [
   { id: 'flow', name: 'Google Flow (Veo)', url: 'https://labs.google/fx/tools/flow', note: 'رصيد شهري مجاني محدود حسب الحساب والمنطقة' },
@@ -18,7 +18,7 @@ async function veoModel(key) {
   const r = await fetch(`${G}/models?pageSize=200`, { headers: { 'x-goog-api-key': key } });
   if (!r.ok) throw new Error('تعذّر جلب النماذج (' + r.status + ')');
   const ids = ((await r.json()).models || []).map((m) => m.name.replace('models/', '')).filter((n) => /^veo/.test(n));
-  if (!ids.length) throw new Error('لا يتيح مفتاحك نماذج Veo. في Google AI Studio يتطلب Veo غالبًا تفعيل الفوترة؛ جرّب Google Flow أو النموذج المحلي.');
+  if (!ids.length) throw new Error('لا يتيح مفتاحك نماذج Veo. في Google AI Studio يتطلب Veo غالبًا تفعيل الفوترة؛ جرّب Google Flow أو Kling أو PixVerse.');
   const score = (n) => (n.match(/veo-(\d+)(?:\.(\d))?/) || []).slice(1).reduce((a, x, i) => a + (+x || 0) / (i ? 10 : 1), 0) + (/fast|lite/.test(n) ? 0.05 : 0);
   return ids.sort((a, b) => score(b) - score(a))[0];
 }
@@ -40,21 +40,3 @@ export async function veo(key, prompt, onStatus) {
   return URL.createObjectURL(await (await fetch(uri, { headers: { 'x-goog-api-key': key } })).blob());
 }
 
-// ComfyUI محليًا: المستخدم يصدّر سير عمل بصيغة API ويضع {{PROMPT}} مكان الوصف
-export async function comfy(base, workflowText, prompt, onStatus) {
-  base = base.replace(/\/$/, '');
-  const wf = JSON.parse(workflowText.replaceAll('{{PROMPT}}', JSON.stringify(prompt).slice(1, -1)));
-  const r = await fetch(`${base}/prompt`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: wf }) });
-  if (!r.ok) throw new Error(`رفض ComfyUI الطلب (${r.status})`);
-  const { prompt_id } = await r.json();
-  for (let i = 0; i < 400; i++) {
-    await new Promise((res) => setTimeout(res, 3000)); onStatus?.(`يولّد محليًا… ${(i + 1) * 3} ث`);
-    const h = (await (await fetch(`${base}/history/${prompt_id}`)).json())[prompt_id];
-    if (!h) continue;
-    const files = Object.values(h.outputs || {}).flatMap((o) => [...(o.gifs || []), ...(o.videos || []), ...(o.images || [])]);
-    const f = files.find((x) => /\.(mp4|webm|gif|webp)$/i.test(x.filename)) || files[0];
-    if (!f) throw new Error('انتهى سير العمل دون ملف فيديو.');
-    return URL.createObjectURL(await (await fetch(`${base}/view?filename=${encodeURIComponent(f.filename)}&subfolder=${encodeURIComponent(f.subfolder || '')}&type=${f.type || 'output'}`)).blob());
-  }
-  throw new Error('انتهت مهلة الانتظار.');
-}

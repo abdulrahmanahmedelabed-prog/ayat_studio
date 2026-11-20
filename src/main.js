@@ -181,9 +181,8 @@ function aiVideoBlock(scene, seedKey) {
   const show = (url, label) => clips.append(h('figure', {}, h('video', { src: url, controls: true, playsinline: true, loop: true }), h('figcaption', {}, label, ' — ', h('a', { href: url, download: `mashhadaya-${seedKey.replace(/[^\w]+/g, '-')}.mp4` }, 'تنزيل'))));
   const run = async (fn, label, btn) => { btn.disabled = true; try { show(await fn(await V, await prompt(), (t) => { msg.textContent = t; }), label); msg.textContent = 'جاهز. راجع المقطع قبل استعماله.'; } catch (e) { msg.textContent = e.message; } btn.disabled = false; };
   const veoBtn = h('button', { class: 'primary', onclick: () => store.get('gkey') ? run((m, p, st) => m.veo(store.get('gkey'), p, st), 'Veo', veoBtn) : (msg.textContent = 'أدخل مفتاح Gemini في الإعدادات أولًا.') }, 'توليد بـ Veo (مفتاح Gemini)');
-  const locBtn = h('button', { class: 'ghost', onclick: () => store.get('comfywf') ? run((m, p, st) => m.comfy(store.get('comfyurl', 'http://127.0.0.1:8188'), store.get('comfywf'), p, st), 'محلي', locBtn) : (msg.textContent = 'اضبط النموذج المحلي (ComfyUI) في الإعدادات أولًا.') }, 'توليد محليًا (مفتوح المصدر)');
-  return h('details', { class: 'panel myshots' }, h('summary', {}, h('b', {}, 'فيديو بالذكاء الاصطناعي'), h('small', {}, ' — Veo وKling وPixVerse وغيرها، أو محليًا مجانًا')),
-    h('div', { class: 'actions-row' }, pick, veoBtn, locBtn),
+  return h('details', { class: 'panel myshots' }, h('summary', {}, h('b', {}, 'فيديو بالذكاء الاصطناعي'), h('small', {}, ' — Veo وKling وPixVerse وغيرها')),
+    h('div', { class: 'actions-row' }, pick, veoBtn),
     h('p', { class: 'note' }, 'أو انسخ الوصف وافتح أداة لها رصيد مجاني بحسابك:'),
     h('div', { class: 'actions-row' }, (WEBTOOLS).map((t) => h('button', { class: 'chipbtn', title: t.note, onclick: async () => { try { await navigator.clipboard.writeText(await prompt()); msg.textContent = `نُسخ الوصف — ألصقه في ${t.name}. (${t.note})`; } catch { msg.textContent = 'تعذّر النسخ.'; } window.open(t.url, '_blank', 'noopener'); } }, t.name))),
     msg, clips);
@@ -552,10 +551,6 @@ function pageAbout() {
       h('div', { class: 'form' }, h('label', {}, 'مفتاح Anthropic API', key), h('label', {}, 'النموذج', model),
         h('button', { class: 'primary', onclick: () => { store.set('key', key.value.trim()); store.set('model', model.value); msg.textContent = key.value.trim() ? 'حُفظ مفتاح Claude.' : 'حُذف مفتاح Claude.'; } }, 'حفظ'),
         h('button', { class: 'ghost', onclick: () => { key.value = ''; store.set('key', ''); msg.textContent = 'حُذف مفتاح Claude.'; } }, 'حذف المفتاح')), msg),
-    h('section', { class: 'panel' }, h('h3', {}, 'فيديو بالذكاء الاصطناعي'),
-      h('p', {}, 'Veo يعمل بمفتاح Gemini أعلاه إن أتاحه حسابك. وللبديل المجاني بلا حدود: شغّل ComfyUI على جهازك مع نموذج فيديو مفتوح المصدر (Wan 2.x أو LTX-Video أو HunyuanVideo)، وصدّر سير العمل بصيغة API، وضع {{PROMPT}} مكان نص الوصف، ثم الصقه هنا. شغّل ComfyUI بالخيار --enable-cors-header.'),
-      h('div', { class: 'form' }, h('label', {}, 'عنوان ComfyUI', h('input', { id: 'comfyurl', dir: 'ltr', value: store.get('comfyurl', 'http://127.0.0.1:8188'), onchange: (ev) => store.set('comfyurl', ev.target.value.trim()) })),
-        h('label', {}, 'سير العمل (JSON بصيغة API)', h('textarea', { id: 'comfywf', dir: 'ltr', rows: 4, placeholder: '{"6":{"inputs":{"text":"{{PROMPT}}"...', onchange: (ev) => { try { if (ev.target.value.trim()) JSON.parse(ev.target.value); store.set('comfywf', ev.target.value); ev.target.setCustomValidity(''); } catch { ev.target.setCustomValidity('JSON غير صالح'); ev.target.reportValidity(); } } }, store.get('comfywf'))))),
     h('section', { class: 'panel' }, h('h3', {}, 'التحديثات'),
       h('p', {}, `الإصدار الحالي: ${AR(APP_VERSION).replace(/\./g, '٫')}. ` + (platform() === 'web' ? 'نسخة الموقع تتحدّث تلقائيًا.' : 'يفحص التطبيق عند فتحه هل صدرت نسخة أحدث، ويُظهر تنبيهًا فيه زر التنزيل.')),
       h('div', { class: 'form' }, h('button', { class: 'ghost', id: 'check-update', onclick: async () => {
