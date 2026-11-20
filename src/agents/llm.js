@@ -109,15 +109,19 @@ export async function listGeminiModels(apiKey) {
 export class GeminiError extends Error { constructor(status, message) { super(message); this.status = status; } }
 
 async function askGemini(apiKey, model, role, payload) {
-  if (model === 'auto') {
-    let last;
-    for (const m of (await candidates(apiKey, role)).slice(0, 5)) {
+  // ضغط على الخادم (503) أو بلوغ الحدّ (429): انتظار قصير ثم إعادة، والانتقال إلى نموذج آخر (الأخف عادة أقل ازدحامًا)
+  const list = model === 'auto' ? (await candidates(apiKey, role)).slice(0, 5) : [model, ...(await candidates(apiKey, 'tafsir')).filter((m) => m !== model).slice(0, 3)];
+  const busy = (err) => err instanceof GeminiError && [429, 500, 503, 504].includes(err.status);
+  let last;
+  for (const [round, delay] of [[0, 0], [1, 3000], [2, 8000]]) {
+    if (delay) await new Promise((r) => setTimeout(r, delay));
+    for (const m of list) {
       try { const out = await askOne(apiKey, m, role, payload); usedModels.add(m); return out; }
-      catch (err) { last = err; if (!(err instanceof GeminiError) || ![404, 429, 503, 500].includes(err.status)) throw err; }
+      catch (err) { last = err; if (!busy(err) && !(err instanceof GeminiError && err.status === 404)) throw err; }
     }
-    throw last;
+    if (!busy(last)) break;
   }
-  return askOne(apiKey, model, role, payload);
+  throw last;
 }
 export const usedModels = new Set();
 
@@ -151,6 +155,7 @@ export function explainError(err) {
     if (err.status === 403) return 'مفتاح Gemini لا يملك صلاحية هذا النموذج.';
     if (err.status === 404) return 'نموذج Gemini المختار غير متاح. اختر «متكيّف» في الإعدادات ليختار التطبيق نموذجًا متاحًا.';
     if (err.status === 429) return 'تجاوزت حدّ الطلبات المجاني في Gemini. انتظر دقيقة ثم أعد المحاولة.';
+    if (err.status === 503 || err.status === 500 || err.status === 504) return 'خوادم Gemini مزدحمة الآن (ضغط مؤقت من Google). أعدنا المحاولة بنماذج أخرى دون نجاح؛ جرّب بعد دقائق.';
     return `خطأ من Gemini (${err.status}): ${err.message}`;
   }
   if (err instanceof Anthropic.AuthenticationError) return 'مفتاح API غير صحيح. راجعه في الإعدادات.';

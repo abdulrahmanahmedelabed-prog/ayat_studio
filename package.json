@@ -1,6 +1,6 @@
 {
   "name": "mashhadaya",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "description": "مَشهَدآية — استوديو الآيات القرآنية: يحوّل معنى الآية إلى مشهد متحرك يُفهم بالنظر",
   "author": "Mashhadaya",
   "license": "MIT",
@@ -61,5 +61,5 @@
     "type": "git",
     "url": "https://github.com/abdulrahmanahmedelabed-prog/ayat_studio.git"
   },
-  "releaseNotes": "في درجة «متساهل» لا تُرفض آية: يُترك المحرَّم ويُصوَّر جانبها الدنيوي وأثرها في النفوس، ومع احتياط بالوكلاء دون اتصال."
+  "releaseNotes": "التعامل مع ازدحام خوادم Gemini: إعادة المحاولة والانتقال إلى نموذج أخف، ثم البناء دون اتصال."
 }
