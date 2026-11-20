@@ -10,7 +10,7 @@ import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
 import { Sfx } from './sfx.js';
 import { Cinema, STYLES, makeReviewer } from './cinema.js';
 import { APP_VERSION, autoCheck, checkUpdate, platform, skip } from './update.js';
-import { runOffline } from './agents/offline.js';
+import { runOffline, runOfflineRange } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
 import { strip } from './agents/rules.js';
 
@@ -327,11 +327,11 @@ async function pageStudio() {
         if (!res.ok && OPENISH.has(strict)) {
           const why = res.aiError || (res.report?.review?.reasons || []).join(' — ');
           STEPS.forEach((id) => { rows[id].dataset.state = 'wait'; rows[id].lastChild.textContent = ''; });
-          res = await runOffline({ clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep);
+          res = await runOfflineRange(A.rows, strict, onStep);
           if (res.ok) res.report.review = { ...res.report.review, reasons: [`تعذّر المشهد بالذكاء الاصطناعي (${why})، فبنته الوكلاء دون اتصال.`] };
         }
       }
-      else res = await runOffline({ clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep);
+      else res = await runOfflineRange(A.rows, strict, onStep);
       if (res.ok) { res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report, ref })); }
       else out.replaceChildren(h('div', { class: 'rejected' }, h('h2', {}, 'هذه الآية لا يُبنى لها مشهد'),
         h('p', {}, 'قرّر المراجع الشرعي أن تصويرها لا يصحّ. تُقرأ وتُفهم من التفسير:'), h('ul', {}, (res.report.review?.reasons || []).map((r) => h('li', {}, r))), verseBlock(A), tafsirBlock(A)));

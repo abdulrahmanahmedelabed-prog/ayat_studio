@@ -111,6 +111,7 @@ export const HUMAN = [
   { id: 'parents', re: w('بالوالدين', 'والديه', 'والدي', 'الكبر', 'أف'), cap: 'برّ الوالدين' },
   { id: 'pray', re: w('الصلاة', 'يصلون', 'صلاتهم', 'ركعا', 'سجدا', 'الساجدين', 'الراكعين', 'يقيمون'), cap: 'الصلاة' },
   { id: 'kind', re: w('حسنا', 'قولا كريما', 'قولا معروفا', 'قولا سديدا', 'قولا لينا', 'سلاما'), cap: 'القول الحسن' },
+  { id: 'repent', re: w('تابوا', 'تاب', 'توبة', 'يتوبون', 'توبوا', 'التوابين', 'استغفروا', 'يستغفرون', 'وأصلحوا', 'غفور'), cap: 'التوبة والرجوع' },
   { id: 'forgive', re: w('الكاظمين', 'الغيظ', 'العافين', 'يعفو', 'اعفوا', 'واصفحوا', 'تعفوا'), cap: 'كظم الغيظ والعفو' },
 ];
 
@@ -169,6 +170,9 @@ function composeHuman(found, clean) {
       E.push(win({ type: 'person', look: 'man', x: 0.36, pose: 'pray', mood: 'calm', seed: 11 }), win({ type: 'person', look: 'elder', x: 0.5, pose: 'pray', mood: 'calm', seed: 12 }), win({ type: 'person', look: 'boy', x: 0.62, pose: 'pray', mood: 'calm', seed: 13, size: 0.8 }));
     } else if (b.id === 'kind') {
       E.push(win({ type: 'person', look: 'man', x: 0.38, mood: 'happy', seed: 14, says: [{ from: t0 + 0.6, to: t1 - 0.5, text: q || 'قولًا حسنًا' }] }), win({ type: 'person', look: 'farmer', x: 0.56, mood: 'happy', seed: 15, facing: -1 }));
+    } else if (b.id === 'repent') {
+      sky.push({ t: t0, mode: 'dawn' });
+      E.push(win({ type: 'person', look: 'man', x: 0.45, pose: 'pray', mood: 'sad', mood2: 'happy', moodAt: t0 + 3.5, seed: 18 }));
     } else if (b.id === 'forgive') {
       E.push(win({ type: 'person', look: 'farmer', x: 0.36, mood: 'angry', mood2: 'calm', moodAt: t0 + 3, seed: 16 }), win({ type: 'person', look: 'man', x: 0.54, mood: 'sad', mood2: 'happy', moodAt: t0 + 3.5, seed: 17, facing: -1 }));
     }
@@ -320,4 +324,46 @@ export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onSt
   report.review = { ...report.review, verdict: checks.every((c) => c.ok) ? 'approve' : 'reject', checks, reasons: [] };
   onStep('final', checks.every((c) => c.ok) ? 'done' : 'stop', 'اجتاز الفحص الآلي للضوابط');
   return { ok: checks.every((c) => c.ok), scene, report };
+}
+
+// ───── عدة آيات: مشهد لكل آية، ثم تُوصل بالترتيب في مشهد واحد ─────
+const TIME_KEYS = ['from', 'to', 'until', 'growFrom', 'growTo', 'witherFrom', 'witherTo', 'fruitFrom', 'rootsFrom', 'greenFrom', 'greenTo', 'dryFrom', 'dryTo', 'windFrom', 'tearFrom', 'tearTo', 'foamFadeFrom', 'foamFadeTo', 'blowFrom', 'barrierFrom', 'washFrom', 'washTo', 'fadeFrom', 'fadeTo', 'uprootFrom', 'uprootTo', 'slackFrom', 'streakFrom', 'moodAt'];
+const AR = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+
+export function joinScenes(parts) {
+  const out = { duration: 0, sky: [], camera: [], elements: [], captions: [] };
+  for (const { scene, a } of parts) {
+    const off = out.duration, end = off + scene.duration, sh = (v) => (typeof v === 'number' ? v + off : v);
+    for (const el of scene.elements) {
+      const o = { ...el };
+      for (const k of TIME_KEYS) if (typeof o[k] === 'number') o[k] = sh(o[k]);
+      if (o.says) o.says = o.says.map((q) => ({ ...q, from: q.from + off, to: q.to + off }));
+      o.from = Math.max(o.from ?? off, off); // لا يظهر قبل آيته
+      o.until = Math.min(o.until ?? end + 0.4, end + 0.4); // ولا يبقى بعدها
+      out.elements.push(o);
+    }
+    for (const k of scene.sky || []) out.sky.push({ ...k, t: k.t + off });
+    if (scene.camera?.length) for (const k of scene.camera) out.camera.push({ ...k, t: k.t + off });
+    else out.camera.push({ t: off, zoom: 1 }, { t: end - 0.1, zoom: 1 });
+    scene.captions.forEach((c, i) => out.captions.push({ ...c, t: c.t + off, text: i === 0 && parts.length > 1 ? `﴿${AR(a)}﴾ ${c.text}` : c.text }));
+    out.duration = end;
+  }
+  out.sky.sort((x, y) => x.t - y.t); out.camera.sort((x, y) => x.t - y.t); out.captions.sort((x, y) => x.t - y.t);
+  out.captions = out.captions.filter((c, i, arr) => !/^مشهد تقريبي آلي|^المشهد إيضاح للحكم|^تصوير تقريبي للغيب/.test(c.text) || i === arr.length - 1);
+  return out;
+}
+
+/** يبني مشهدًا لكل آية في المدى ويصلها. rows: [{ a, clean, tafsir }] */
+export async function runOfflineRange(rows, strictness, onStep) {
+  if (rows.length === 1) return runOffline({ clean: rows[0].clean, tafsir: rows[0].tafsir, strictness }, onStep);
+  const parts = [], skipped = [], reports = [];
+  for (const [i, r] of rows.entries()) {
+    const tag = `الآية ${AR(r.a)} (${AR(i + 1)} من ${AR(rows.length)})`;
+    const res = await runOffline({ clean: r.clean, tafsir: r.tafsir, strictness }, (id, st, d) => onStep(id, st, d ? `${tag}: ${d}` : tag));
+    if (res.ok) { parts.push({ scene: res.scene, a: r.a }); reports.push(res.report); } else skipped.push(`الآية ${AR(r.a)}: ${(res.report.review?.reasons || []).join(' — ')}`);
+  }
+  if (!parts.length) return { ok: false, report: { mode: 'offline', review: { verdict: 'reject', reasons: skipped } } };
+  const scene = joinScenes(parts), first = reports[0];
+  onStep('final', 'done', `وُصلت مشاهد ${AR(parts.length)} آيات في مشهد واحد (${AR(Math.round(scene.duration))} ثانية)` + (skipped.length ? ` · تُركت: ${skipped.join('؛ ')}` : ''));
+  return { ok: true, scene, report: { ...first, paint: { elements: reports.flatMap((r) => r.paint?.elements || []) }, animate: { duration: scene.duration, beats: scene.captions.length }, review: { ...first.review, verdict: 'approve', checks: checkScene(scene), reasons: skipped } } };
 }

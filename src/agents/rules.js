@@ -61,14 +61,14 @@ const BOOL = ['gather', 'snow', 'roots', 'fruit', 'row', 'foam', 'scatter', 'tal
 const ENUM = { motion: ['still', 'rise', 'set', 'arc'], kind: ['grass', 'crop', 'flowers', 'broad', 'palm', 'olive', 'vine', 'grain', 'stone', 'sheep', 'cow', 'camel', 'goat'], look: ['boy', 'girl', 'man', 'woman', 'farmer', 'elder', 'grandma'], pose: ['stand', 'walk', 'lookup', 'cheer', 'sow', 'thirsty', 'pray', 'give', 'receive', 'help', 'invite', 'flog', 'bowed'], mood: ['calm', 'happy', 'sad', 'afraid', 'surprised', 'angry'], mood2: ['calm', 'happy', 'sad', 'afraid', 'surprised', 'angry'], mode: ['flap', 'soar', 'both'], phase: ['cycle', 'wax', 'wane'] };
 
 export function sanitizeScene(raw, strictness = 'lenient') {
-  const out = { duration: clamp(+raw?.duration || 24, 10, 45), elements: [], captions: [], sky: [] };
+  const out = { duration: clamp(+raw?.duration || 24, 10, 120), elements: [], captions: [], sky: [] };
   if (raw?.horizon != null) out.horizon = clamp(+raw.horizon, 0.3, 0.85);
   for (const k of raw?.sky || []) if (SKY[k?.mode]) out.sky.push({ t: clamp(+k.t || 0, 0, out.duration), mode: k.mode });
-  for (const k of (raw?.camera || []).slice(0, 8)) if (k && isFinite(+k.t)) (out.camera ||= []).push({ t: clamp(+k.t, 0, out.duration), zoom: clamp(+k.zoom || 1, 1, 2), x: clamp(k.x == null ? 0.5 : +k.x, 0, 1), y: clamp(k.y == null ? 0.5 : +k.y, 0, 1) });
+  for (const k of (raw?.camera || []).slice(0, 24)) if (k && isFinite(+k.t)) (out.camera ||= []).push({ t: clamp(+k.t, 0, out.duration), zoom: clamp(+k.zoom || 1, 1, 2), x: clamp(k.x == null ? 0.5 : +k.x, 0, 1), y: clamp(k.y == null ? 0.5 : +k.y, 0, 1) });
   out.camera?.sort((a, b) => a.t - b.t);
   out.sky.sort((a, b) => a.t - b.t); if (!out.sky.length) out.sky = [{ t: 0, mode: 'day' }];
   const dropped = [];
-  for (const el of (raw?.elements || []).slice(0, 26)) {
+  for (const el of (raw?.elements || []).slice(0, 60)) {
     if (!el || !ELEMENT_TYPES.includes(el.type) || (!OPENISH.has(strictness) && FIGURE_TYPES.includes(el.type))) { dropped.push(String(el?.type)); continue; }
     const o = { type: el.type };
     for (const [k, [a, b]] of Object.entries(NUM)) if (typeof el[k] === 'number' && isFinite(el[k])) o[k] = clamp(el[k], a, b);
@@ -78,7 +78,7 @@ export function sanitizeScene(raw, strictness = 'lenient') {
     if (el.type === 'label') { o.text = String(el.text || '').slice(0, 28); if (!o.text) continue; }
     out.elements.push(o);
   }
-  for (const c of (raw?.captions || []).slice(0, 9)) if (c && typeof c.text === 'string' && c.text.trim()) out.captions.push({ t: clamp(+c.t || 0, 0, out.duration - 1), text: c.text.trim().slice(0, 130) });
+  for (const c of (raw?.captions || []).slice(0, 24)) if (c && typeof c.text === 'string' && c.text.trim()) out.captions.push({ t: clamp(+c.t || 0, 0, out.duration - 1), text: c.text.trim().slice(0, 130) });
   out.captions.sort((a, b) => a.t - b.t);
   return { scene: out, dropped };
 }
