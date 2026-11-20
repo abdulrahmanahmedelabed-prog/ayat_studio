@@ -1,6 +1,6 @@
 {
   "name": "mashhadaya",
-  "version": "1.20.0",
+  "version": "1.20.1",
   "description": "مَشهَدآية — استوديو الآيات القرآنية: يحوّل معنى الآية إلى مشهد متحرك يُفهم بالنظر",
   "author": "Mashhadaya",
   "license": "MIT",
@@ -65,7 +65,7 @@
     "type": "git",
     "url": "https://github.com/abdulrahmanahmedelabed-prog/ayat_studio.git"
   },
-  "releaseNotes": "أوصاف لقطات سينمائية لكل آيات القرآن، وخيارات عرض جديدة منها شدّة التصوير (هادئ/درامي/عنيف بلا دماء)، وصور سينمائية بمفتاح Gemini أو Hugging Face تدخل في الفيديو، ولوحة فيديو بالذكاء الاصطناعي (Veo وKling وPixVerse وغيرها).",
+  "releaseNotes": "تزامن أدق: يظهر كل تعليق حين يبلغ القارئ لفظه من الآية، في العرض وفي الفيديو المحفوظ. وأوصاف أدق للسور ٥٧–٦٩، ولقطات سينمائية مراجَعة لمشاهد أكثر.",
   "dependencies": {
     "ffmpeg-static": "^5.2.0"
   }
