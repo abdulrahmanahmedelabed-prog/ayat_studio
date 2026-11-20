@@ -1,7 +1,7 @@
 // الوكلاء بالذكاء الاصطناعي (Claude): خمس مراحل متتابعة يتحكم بها الكود،
 // وكل مخرَج يمرّ بعدها على التنقية والفحص الآلي في rules.js.
 import Anthropic from '@anthropic-ai/sdk';
-import { POLICY, TYPE_NAMES, sanitizeScene, checkScene, textBarriers } from './rules.js';
+import { POLICY, TYPE_NAMES, sanitizeScene, checkScene, textBarriers, OPENISH } from './rules.js';
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
 const FALLBACK_OK = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-fable-5-2'];
@@ -24,7 +24,9 @@ const DSL = `وصف المشهد كائن JSON بهذا الشكل:
 - grain {x, size} حبة تنبت سبع سنابل | sea {y, storm} | twoSeas {barrierFrom} | ship {x0, x1} | river {foam, foamFadeFrom, foamFadeTo}
 - bees {x, y, count} خلية ونحل مرموز له بنقاط | web {windFrom, tearFrom, tearTo} بيت عنكبوت | ashes {blowFrom} رماد تذروه الريح
 - hail بَرَد | rock {washFrom, washTo} حجر أملس عليه تراب يزيله المطر | shadow {x} ظل يتبع الشمس (ضعه بعد sun و ground) | mirage {fadeFrom, fadeTo} سراب | sprout {kind: grain|stone, x} حبة أو نواة تنفلق | bitter {uprootFrom, uprootTo} شجرة حنظل تُجتث
-- (في الدرجة lenient فقط) person {look: boy|girl|man|woman|farmer|elder|grandma, pose: stand|walk|lookup|cheer|sow|thirsty|pray|give|receive|help|invite, mood: calm|happy|sad|afraid|surprised|angry, mood2 و moodAt لتغيّر الانفعال, says: [{from, to, text, style: speak|shout|whisper}] لقول تذكره الآية أو التفسير فقط, x أو x0,x1 للمشي, size} شخصية أنمي عامة | animal {kind: sheep|cow|camel|goat, x أو x0,x1, graze} | birds {count, y, x0, x1, mode: flap|soar|both} سرب طير. لا تجعل شخصية تمثّل نبيًّا أو ملَكًا أو شخصًا بعينه.
+- (في الدرجة lenient فقط) person {look: boy|girl|man|woman|farmer|elder|grandma, pose: stand|walk|lookup|cheer|sow|thirsty|pray|give|receive|help|invite|flog|bowed, mood: calm|happy|sad|afraid|surprised|angry, mood2 و moodAt لتغيّر الانفعال, says: [{from, to, text, style: speak|shout|whisper}] لقول تذكره الآية أو التفسير فقط, x أو x0,x1 للمشي, size} شخصية أنمي عامة | animal {kind: sheep|cow|camel|goat, x أو x0,x1, graze} | birds {count, y, x0, x1, mode: flap|soar|both} سرب طير. لا تجعل شخصية تمثّل نبيًّا أو ملَكًا أو شخصًا بعينه.
+- (في الدرجة open فقط) fire {size} لهب على الأرض | quake تشقّق الأرض واهتزاز المشهد
+- scales {x, size} ميزان العدل يتأرجح ثم يستقر (لآيات الأحكام والحدود والقصاص) | scroll {x, y} صحيفة تُكتب سطورها (الدَّين والوصية والعقود)
 - orbits أفلاك الشمس والقمر | depths {y} مقطع بحر عميق تتراكم ظلماته | label {text (حتى 4 كلمات), x, y}
 لنباتٍ نامٍ منذ البداية استعمل growFrom: -6 و growTo: -1. لا توجد أنواع أخرى، ولا يمكن رسم إنسان أو حيوان أو بناء.`;
 
@@ -37,7 +39,8 @@ const AGENTS = {
   tafsir: `دورك: «جامع التفسير». يُعطى لك نص الآية ونص التفسير الميسّر لها. لخّص المعنى من النص المعطى، ولا تنسب قولًا إلى مفسّر آخر إلا إن كنت متيقنًا منه، وعلِّمه حينئذ بـ"يُراجَع". لا تجتهد في معنى جديد.
 أخرج: {"summary": "المعنى في جملتين", "points": [{"text": "...", "source": "الميسّر | ابن كثير (يُراجَع) ..."}], "kind": "kawni|mathal|qasas|hukm|ghayb|aqida", "visuals": ["المحسوسات التي ذكرتها الآية نفسها مما يصلح للرسم"], "not_visual": ["ما في الآية مما لا يُرسم ولماذا"]}`,
   review: `دورك: «المراجع الشرعي». تقرّر هل يُبنى مشهد لهذه الآية، وما قيوده، بحسب درجة التشدد المعطاة في الطلب (strictness):
-- lenient (متساهل): verdict يكون allow دائمًا في هذه الدرجة، ولا ترفض الآية كلها أبدًا. يجوز رسم الناس والأنعام والطير شخصياتٍ عامة بانفعالاتهم وأقوالهم. ما يحرم تصويره (ذات الله وصفاته، الأنبياء، الملائكة، الجنة والنار والقيامة وسائر الغيب) ضعه في leave_out ولا يُرسم. ثم ابحث عمّا يُرسم: الجانب الدنيوي من الآية (ما فعله الناس أو قالوه في الدنيا، كدعوتهم إلى الإيمان وإعراضهم)، أو أثرها في النفوس (الندم، الخوف، الرجاء، الفرح) على وجوه شخصيات عامة، أو مَثَلًا محسوسًا يقرّب المعنى. ضع ذلك في constraints توجيهًا للرسّام. لا يُرسم الغيب نفسه، بل أثره في الناس فقط.
+- lenient (متساهل): verdict يكون allow دائمًا في هذه الدرجة، ولا ترفض الآية كلها أبدًا. يجوز رسم الناس والأنعام والطير شخصياتٍ عامة بانفعالاتهم وأقوالهم. ما يحرم تصويره (ذات الله وصفاته، الأنبياء، الملائكة، الجنة والنار والقيامة وسائر الغيب) ضعه في leave_out ولا يُرسم. ثم ابحث عمّا يُرسم: الجانب الدنيوي من الآية (ما فعله الناس أو قالوه في الدنيا، كدعوتهم إلى الإيمان وإعراضهم)، أو أثرها في النفوس (الندم، الخوف، الرجاء، الفرح) على وجوه شخصيات عامة، أو مَثَلًا محسوسًا يقرّب المعنى. ضع ذلك في constraints توجيهًا للرسّام. لا يُرسم الغيب نفسه، بل أثره في الناس فقط. وفي آيات الحدود يجوز في هذه الدرجة رسم إقامة الحدّ (pose: flog لمن يقيمه، و bowed لمن يُقام عليه، وجماعة من المؤمنين شهودًا) بلا جروح ولا دم، ولا يُرسم الذنب نفسه أبدًا. في الدرجتين الأخريين يُعرض الحكم رمزيًا (scales و label بالعدد).
+- open (بلا قيود): verdict allow دائمًا. صوّر كل ما تذكره الآية بشخصيات عامة: الجنة (حدائق وأنهار وثمار وأهلها فرحون)، والنار (لهب fire وسماء حمراء storm وأهلها خائفون نادمون)، والقيامة والبعث (quake وفزع الناس)، وإقامة الحدود بلا جروح ولا دم. لا يُرسم أبدًا: ذات الله وصفاته، الأنبياء، الملائكة، الفاحشة نفسها؛ ضعها في leave_out.
 - balanced (معتدل): أجز إذا كان في الآية محسوس كوني أو مَثَل، واترك ما لا يُرسم، وارفض إن دار المعنى كله على الغيب أو الصفات.
 - strict (متشدد): ارفض عند أي ذكر لنبي أو ملَك أو غيب أو صفة لله، ولا تجز إلا الآيات الكونية الصريحة.
 أخرج: {"verdict": "allow|reject", "reasons": ["..."], "constraints": ["قيود على الرسام"], "leave_out": ["ما لا يُرسم من الآية"]}`,
@@ -180,7 +183,7 @@ export async function runLLM({ apiKey, model = DEFAULT_MODEL, provider = 'claude
   onStep('review', 'run');
   const rv = await call('review', { ...ayah, tafsir_agent: tf, automatic_flags: textBarriers(clean) });
   // في «متساهل» لا تُرفض الآية كلها: أسباب الرفض تصير أشياء تُترك من المشهد، ويُرسم الباقي
-  if (rv.verdict !== 'allow' && strictness === 'lenient') { rv.leave_out = [...(rv.leave_out || []), ...(rv.reasons || [])]; rv.constraints = [...(rv.constraints || []), 'لا تصوّر الغيب ولا الملائكة ولا صفات الله. صوّر الجانب الدنيوي من الآية أو أثرها في نفوس الناس بشخصيات عامة.']; rv.verdict = 'allow'; }
+  if (rv.verdict !== 'allow' && OPENISH.has(strictness)) { rv.leave_out = [...(rv.leave_out || []), ...(rv.reasons || [])]; rv.constraints = [...(rv.constraints || []), 'لا تصوّر الغيب ولا الملائكة ولا صفات الله. صوّر الجانب الدنيوي من الآية أو أثرها في نفوس الناس بشخصيات عامة.']; rv.verdict = 'allow'; }
   if (rv.verdict !== 'allow') {
     report.review = { verdict: 'reject', reasons: rv.reasons || [] };
     onStep('review', 'stop', (rv.reasons || []).join(' — '));
@@ -204,7 +207,7 @@ export async function runLLM({ apiKey, model = DEFAULT_MODEL, provider = 'claude
   const rm = new Set((fin.remove_elements || []).filter(Number.isInteger));
   scene.elements = scene.elements.filter((_, i) => !rm.has(i));
   for (const f of fin.caption_fixes || []) if (scene.captions[f.index] && typeof f.text === 'string') scene.captions[f.index].text = f.text.slice(0, 130);
-  const checks = checkScene(scene), ok = (fin.verdict !== 'reject' || strictness === 'lenient') && checks.every((c) => c.ok) && scene.elements.length > 0;
+  const checks = checkScene(scene), ok = (fin.verdict !== 'reject' || OPENISH.has(strictness)) && checks.every((c) => c.ok) && scene.elements.length > 0;
   if (provider === 'gemini' && model === 'auto') report.model = 'متكيّف: ' + [...usedModels].join('، ');
   report.review = { verdict: ok ? 'approve' : 'reject', checks, reasons: fin.issues || [], constraints: rv.constraints || [], leaveOut: rv.leave_out || [], note: fin.note };
   onStep('final', ok ? 'done' : 'stop', fin.note || (ok ? 'أُجيز' : 'رُفض المشهد'));

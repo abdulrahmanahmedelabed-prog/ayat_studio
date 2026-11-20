@@ -491,6 +491,52 @@ Object.assign(DRAW, {
 });
 
 Object.assign(DRAW, { person, animal, birds });
+// رموز آيات الأحكام: ميزان العدل (يتأرجح ثم يستقر)، وصحيفة مكتوبة (الدَّين والوصية)
+Object.assign(DRAW, {
+  scales(c, e, el, k, a) {
+    const x = (el.x ?? 0.5) * e.W, base = e.gy(x) + e.U * 0.01, S = e.U * 0.42 * (el.size || 1), top = base - S;
+    const tilt = Math.sin(e.t * 2.2) * 0.22 * (1 - ease(k)), gold = lit('#d9b45a', e, 0.4), dark = lit('#8a6a28', e, 0.4);
+    c.globalAlpha = a;
+    const g = c.createRadialGradient(x, top, 0, x, top, S * 0.9); g.addColorStop(0, rgba('#ffe9a8', 0.28 * a)); g.addColorStop(1, rgba('#ffe9a8', 0)); c.fillStyle = g; circle(c, x, top, S * 0.9);
+    c.fillStyle = dark; c.beginPath(); c.ellipse(x, base, S * 0.22, S * 0.05, 0, 0, 2 * PI); c.fill();
+    c.fillStyle = gold; c.fillRect(x - S * 0.025, top, S * 0.05, S); circle(c, x, top - S * 0.03, S * 0.05);
+    c.save(); c.translate(x, top + S * 0.04); c.rotate(tilt);
+    c.fillStyle = gold; c.fillRect(-S * 0.5, -S * 0.015, S, S * 0.03);
+    for (const d of [-1, 1]) {
+      const px = d * S * 0.47, drop = S * 0.32 - d * Math.sin(tilt) * 0; c.save(); c.translate(px, 0); c.rotate(-tilt);
+      c.strokeStyle = gold; c.lineWidth = S * 0.008; c.beginPath(); c.moveTo(0, 0); c.lineTo(-S * 0.13, drop); c.moveTo(0, 0); c.lineTo(S * 0.13, drop); c.stroke();
+      c.fillStyle = dark; c.beginPath(); c.ellipse(0, drop, S * 0.16, S * 0.035, 0, 0, PI); c.fill(); c.fillStyle = gold; c.beginPath(); c.ellipse(0, drop, S * 0.16, S * 0.02, 0, 0, 2 * PI); c.fill();
+      c.restore();
+    }
+    c.restore();
+  },
+  fire(c, e, el, k, a) { // لهب متراقص على امتداد الأرض
+    const n = el.count || 28, r = rng(el.seed || 71), base = e.H, top = e.hz - e.U * 0.12 * (el.size || 1) * ease(k);
+    const g = c.createLinearGradient(0, top - e.U * 0.2, 0, base); g.addColorStop(0, rgba('#ff5a1f', 0)); g.addColorStop(0.4, rgba('#ff5a1f', 0.35 * a)); g.addColorStop(1, rgba('#7a0d00', 0.75 * a));
+    c.fillStyle = g; c.fillRect(0, top - e.U * 0.2, e.W, base - top + e.U * 0.2);
+    for (let i = 0; i < n; i++) {
+      const x = r() * e.W, h = e.U * (0.12 + r() * 0.2) * (el.size || 1) * ease(k), ph = r() * 9, w = e.U * (0.03 + r() * 0.04), y = e.gy(x) + (r() * 0.6) * (e.H - e.hz);
+      const fl = h * (0.75 + 0.25 * Math.sin(e.t * 9 + ph));
+      for (const [col, sc] of [['#ff6a00', 1], ['#ffb300', 0.65], ['#fff3b0', 0.3]]) {
+        c.globalAlpha = a * 0.9; c.fillStyle = col; c.beginPath(); c.moveTo(x - w * sc, y);
+        c.quadraticCurveTo(x - w * sc * 0.9, y - fl * sc * 0.6, x + Math.sin(e.t * 6 + ph) * w * 0.6, y - fl * sc); c.quadraticCurveTo(x + w * sc * 0.9, y - fl * sc * 0.6, x + w * sc, y); c.closePath(); c.fill();
+      }
+    }
+  },
+  quake(c, e, el, k, a) { // تشقّق الأرض وغبار
+    const r = rng(el.seed || 83); c.globalAlpha = a; c.strokeStyle = rgba('#2a1a10', 0.8); c.lineWidth = e.U * 0.006;
+    for (let i = 0; i < 9; i++) { let x = r() * e.W, y = e.hz + r() * (e.H - e.hz); c.beginPath(); c.moveTo(x, y); for (let j = 0; j < 5 * ease(k); j++) { x += (r() - 0.5) * e.U * 0.14; y += (r() - 0.3) * e.U * 0.05; c.lineTo(x, y); } c.stroke(); }
+    c.fillStyle = rgba('#b39b7a', 0.35 * a);
+    for (let i = 0; i < 40; i++) { const x = r() * e.W, ph = r(), u = (ph + e.t * 0.2) % 1; circle(c, x + Math.sin(e.t + i) * e.U * 0.02, e.hz - u * e.U * 0.3, e.U * (0.02 + r() * 0.03) * (1 - u)); }
+  },
+  scroll(c, e, el, k, a) {
+    const x = (el.x ?? 0.5) * e.W, y = (el.y ?? 0.42) * e.H, S = e.U * 0.3 * (el.size || 1), open = ease(k);
+    c.globalAlpha = a; c.fillStyle = lit('#f1e4c4', e, 0.4); c.fillRect(x - S * 0.4 * open, y - S * 0.35, S * 0.8 * open, S * 0.7);
+    c.strokeStyle = lit('#9c8558', e, 0.4); c.lineWidth = S * 0.012;
+    for (let i = 0; i < 6; i++) { const ly = y - S * 0.22 + i * S * 0.09, w = S * 0.6 * open * (i === 5 ? 0.5 : 1) * Math.min(1, Math.max(0, k * 6 - i)); c.beginPath(); c.moveTo(x + S * 0.3 * open, ly); c.lineTo(x + S * 0.3 * open - w, ly); c.stroke(); }
+    c.fillStyle = lit('#b08a4a', e, 0.4); for (const d of [-1, 1]) { c.beginPath(); c.ellipse(x + d * S * 0.42 * open, y, S * 0.05, S * 0.38, 0, 0, 2 * PI); c.fill(); }
+  },
+});
 
 export const ELEMENT_TYPES = Object.keys(DRAW);
 
@@ -510,6 +556,8 @@ export function drawScene(ctx, W, H, scene, t, opts = {}) {
   ctx.globalAlpha = 1;
   const cam = camAt(scene, t);
   ctx.save();
+  const qk = (scene.elements || []).find((q) => q.type === 'quake' && t >= (q.from ?? 0) && (q.until == null || t < q.until));
+  if (qk && !opts.only) ctx.translate(Math.sin(t * 53) * W * 0.006, Math.cos(t * 47) * H * 0.006); // اهتزاز
   if (cam) { ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x * W, -cam.y * H); }
   if (!opts.only) { const g = ctx.createLinearGradient(0, 0, 0, e.hz + H * 0.05); g.addColorStop(0, sky.top); g.addColorStop(1, sky.bot);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); } else e.light = 1;

@@ -5,7 +5,7 @@ import '@fontsource/tajawal/arabic-700.css';
 import './styles.css';
 import { Player, drawScene } from './engine/render.js';
 import { LIBRARY } from './scenes/library.js';
-import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel } from './agents/rules.js';
+import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel, OPENISH } from './agents/rules.js';
 import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
 import { Sfx } from './sfx.js';
 import { Cinema, STYLES, makeReviewer } from './cinema.js';
@@ -257,7 +257,7 @@ async function recordVideo(p, scene, title, btn, rc, status) {
 }
 
 function curatedReport(item, A) {
-  const checks = checkScene(item), figs = level() === 'lenient' && item.omittedFigures;
+  const checks = checkScene(item), figs = OPENISH.has(level()) && item.omittedFigures;
   const omitted = figs ? [...(item.omitted || []).filter((o) => !/(الظمآن|الناس|الإنسان|الأنعام|الزُّرّاع|العباد|الدوابّ)/.test(o)), ...item.omittedFigures] : item.omitted;
   return {
     mode: 'curated', tafsir: { source: 'التفسير الميسّر', visuals: [...new Set(item.elements.filter((e) => e.type !== 'label').map((e) => TYPE_NAMES[e.type]))] },
@@ -278,7 +278,7 @@ function sceneCard(item) {
   return h('button', { class: 'card', onclick: () => go('scene/' + item.id) }, cv, h('span', {}, h('b', {}, isFav(item.id) ? h('i', { class: 'heart', 'aria-label': 'في المفضّلة' }, '♥ ') : null, item.title), meta));
 }
 function pageLibrary() {
-  const visible = LIBRARY.filter((x) => !x.needsFigures || level() === 'lenient').map((item) => forLevel(item, level()));
+  const visible = LIBRARY.filter((x) => !x.needsFigures || OPENISH.has(level())).map((item) => forLevel(item, level()));
   const byId = (ids) => ids.map((id) => visible.find((x) => x.id === id)).filter(Boolean);
   const cats = [...new Set(visible.map((x) => x.cat))], favs = byId(listGet('favs')), seen = byId(listGet('seen')).slice(0, 4);
   const row = (title, items) => items.length ? h('section', {}, h('h2', { class: 'cat' }, title), h('div', { class: 'grid' }, items.map(sceneCard))) : null;
@@ -322,9 +322,9 @@ async function pageStudio() {
       if (ai) {
         const L = await import('./agents/llm.js');
         try { res = await L.runLLM({ ...ai, refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
-        catch (err) { if (strict !== 'lenient') throw err; res = { ok: false, aiError: L.explainError(err) }; }
+        catch (err) { if (!OPENISH.has(strict)) throw err; res = { ok: false, aiError: L.explainError(err) }; }
         // احتياط في «متساهل»: إن تعذّر بناء المشهد بالذكاء الاصطناعي تبنيه الوكلاء دون اتصال
-        if (!res.ok && strict === 'lenient') {
+        if (!res.ok && OPENISH.has(strict)) {
           const why = res.aiError || (res.report?.review?.reasons || []).join(' — ');
           STEPS.forEach((id) => { rows[id].dataset.state = 'wait'; rows[id].lastChild.textContent = ''; });
           res = await runOffline({ clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep);
@@ -456,7 +456,7 @@ document.fonts?.ready.then(() => current?.draw());
 // ───────── اختبر فهمك ─────────
 const quiz = { score: 0, total: 0, last: null };
 async function pageQuiz() {
-  const pool = LIBRARY.filter((x) => !x.needsFigures || level() === 'lenient');
+  const pool = LIBRARY.filter((x) => !x.needsFigures || OPENISH.has(level()));
   let item; do item = pool[Math.floor(Math.random() * pool.length)]; while (pool.length > 1 && item.id === quiz.last);
   quiz.last = item.id;
   const others = pool.filter((x) => x.id !== item.id).sort(() => Math.random() - 0.5).slice(0, 2);

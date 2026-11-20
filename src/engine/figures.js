@@ -71,6 +71,12 @@ export function person(c, e, el, k, a) {
   else if (pose === 'give' || pose === 'receive') { arm(-1, 0.2); hand = arm(1, 1.45, pose === 'give' ? 0.1 : -0.3); if (pose === 'give') { c.fillStyle = dim(e, '#d8a24a'); ell(c, hand[0] + H * 0.03, hand[1] - H * 0.02, H * 0.045, H * 0.03); } }
   else if (pose === 'help') { arm(-1, 1.3, 0.3); arm(1, 1.1, 0.5); }
   else if (pose === 'invite') { arm(-1, 0.2); arm(1, 1.9 + Math.sin(e.t * 3) * 0.15, -0.6); }
+  else if (pose === 'flog') { // يرفع السوط ثم يُنزله (حركة فقط، دون أثر على أحد)
+    arm(-1, 0.25); const ph2 = (e.t * 0.9 + (el.seed || 0)) % 1, up = ph2 < 0.75 ? ease(ph2 / 0.75) : 1 - ease((ph2 - 0.75) / 0.25);
+    hand = arm(1, lerp(0.7, 2.9, up), lerp(0.2, -0.4, up));
+    c.strokeStyle = dim(e, '#5a3a1e'); c.lineWidth = H * 0.018; c.beginPath(); c.moveTo(hand[0], hand[1]);
+    c.quadraticCurveTo(hand[0] + H * lerp(0.25, -0.05, up), hand[1] + H * lerp(0.05, -0.25, up), hand[0] + H * lerp(0.42, 0.1, up), hand[1] + H * lerp(0.3, -0.3, up)); c.stroke(); }
+  else if (pose === 'bowed') { arm(-1, 0.9, 1.6); arm(1, 0.9, 1.6); }
   else if (mood === 'afraid') { arm(-1, 2.25, -1.5); arm(1, 2.25, -1.5); }
   else if (mood === 'surprised') { arm(-1, 1.75, -0.5); arm(1, 1.75, -0.5); }
   else if (mood === 'angry') { arm(-1, 0.55, 1.1); arm(1, 0.55, 1.1); }
@@ -80,7 +86,7 @@ export function person(c, e, el, k, a) {
   else if (line) { arm(-1, 0.18); arm(1, 0.9 + talk * 0.4, -0.4); }
   else { arm(-1, 0.18); arm(1, 0.18); }
   // الرأس
-  const hy = bodyTop - H * 0.15, R = H * 0.16, tilt = mood === 'sad' ? 0.24 : mood === 'angry' ? 0.08 : pose === 'lookup' || pose === 'cheer' ? -0.18 : pose === 'thirsty' ? 0.12 : 0;
+  const hy = bodyTop - H * 0.15, R = H * 0.16, tilt = pose === 'bowed' ? 0.38 : mood === 'sad' ? 0.24 : mood === 'angry' ? 0.08 : pose === 'lookup' || pose === 'cheer' ? -0.18 : pose === 'thirsty' ? 0.12 : 0;
   c.save(); c.translate(0, hy); c.rotate(tilt);
   if (L.head === 'hair') { c.fillStyle = dim(e, L.hair); circle(c, -R * 0.08, -R * 0.08, R * 1.08); }
   if (L.head === 'scarf') { c.fillStyle = dim(e, L.scarf); c.beginPath(); c.ellipse(0, R * 0.05, R * 1.22, R * 1.28, 0, 0, 2 * PI); c.fill(); c.beginPath(); c.moveTo(-R * 1.1, R * 0.4); c.quadraticCurveTo(0, R * 2.1, R * 1.1, R * 0.4); c.fill(); }

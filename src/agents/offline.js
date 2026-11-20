@@ -1,6 +1,6 @@
 // الوكلاء دون اتصال: خط إنتاج بالقواعد يعمل بلا إنترنت ولا مفتاح.
 // متحفّظ عمدًا: أي آية فيها ذِكر نبي أو ملَك أو غيب أو صفة لا يُبنى لها مشهد.
-import { strip, textBarriers, checkScene, TYPE_NAMES } from './rules.js';
+import { strip, textBarriers, checkScene, TYPE_NAMES, OPENISH, BARRIERS } from './rules.js';
 
 const P = '(?:^|\\s)[وفبلك]{0,2}(?:ال|لل)?', S = '(?:[اهي]|ات|ين|ون|ها|هم|كم|نا|ه)?(?=\\s|$)';
 const w = (...l) => new RegExp(P + '(?:' + l.map(strip).join('|') + ')' + S);
@@ -14,7 +14,7 @@ export const CONCEPTS = [
   { id: 'clouds', re: w('سحاب', 'السحاب', 'سحابا', 'الغمام', 'المزن', 'المعصرات'), cap: 'السحاب' },
   { id: 'rain', re: w('من السماء ماء', 'ماء مباركا', 'ماء طهورا', 'ماء ثجاجا', 'الغيث', 'غيث', 'وابل', 'الودق', 'صيب', 'مطر', 'أنزلنا عليها الماء', 'فأنزلنا به الماء'), cap: 'نزول الماء من السماء' },
   { id: 'mountains', re: w('الجبال', 'جبال', 'الجبل', 'رواسي', 'أوتادا', 'الطور'), cap: 'الجبال الرواسي' },
-  { id: 'sea', re: w('البحر', 'بحر', 'البحرين', 'البحار', 'اليم', 'موج'), cap: 'البحر' },
+  { id: 'sea', re: w('البحر', 'بحر', 'البحرين', 'البحار', 'في اليم', 'موج'), cap: 'البحر' },
   { id: 'ship', re: w('الفلك', 'السفينة', 'الجوار', 'الجواري'), cap: 'السفن الجارية في البحر' },
   { id: 'river', re: w('الأنهار', 'أنهارا', 'نهرا', 'أودية', 'عيونا', 'ينابيع'), cap: 'الماء الجاري في الأرض' },
   { id: 'dead', re: w('ميتا', 'ميت', 'الميتة', 'هامدة', 'خاشعة', 'بعد موتها'), cap: 'الأرض الميتة اليابسة' },
@@ -27,6 +27,76 @@ export const CONCEPTS = [
   { id: 'people', re: w('الناس', 'الإنسان', 'للناس', 'عباده', 'لعباده', 'للعباد'), cap: 'الناس', fig: true },
   { id: 'earth', re: w('الأرض'), cap: 'الأرض' },
 ];
+
+// ───── آيات الأحكام ─────
+// الذنب لا يُرسم أبدًا. إقامة الحدّ تُرسم في «متساهل» فقط (بلا جروح ولا دم)، وفي غيرها رمزيًا بالميزان.
+const RULING = {
+  flog: w('فاجلدوا', 'فاجلدوهم', 'جلدة'),
+  hadd: w('فاقطعوا', 'القصاص', 'النفس بالنفس', 'نكالا', 'السارق', 'السارقة'),
+  fast: w('الصيام', 'فليصمه', 'تصوموا', 'الصائمين', 'رمضان'),
+  record: w('تداينتم', 'فاكتبوه', 'كاتب', 'الوصية', 'وصية', 'يوصيكم', 'شهيدين', 'فرهان'),
+};
+const RULING_ANY = { test: (st) => Object.values(RULING).some((re) => { re.lastIndex = 0; return re.test(st); }), lastIndex: 0 };
+const NUMS = { 'مائة': '١٠٠', 'ثمانين': '٨٠', 'أربعة شهداء': '٤ شهداء' };
+function composeRuling(kind, clean, tafsir, level) {
+  const D = 26, E = [{ type: 'mountains', count: 3, size: 0.55, seed: 61 }, { type: 'ground', green: 0.45, cracks: false }], st = strip(clean);
+  let sky = [{ t: 0, mode: 'day' }];
+  const num = Object.keys(NUMS).find((n) => st.includes(strip(n)));
+  const witnesses = (from) => ['man', 'elder', 'farmer', 'man', 'elder'].forEach((look, i) => E.push({ type: 'person', look, x: [0.08, 0.17, 0.83, 0.92, 0.74][i], mood: 'calm', seed: 20 + i, from: from + i * 0.3, facing: i < 2 ? 1 : -1, size: 0.85 }));
+  if (kind === 'flog' && OPENISH.has(level)) { // إقامة الحدّ بلا جروح ولا دم
+    sky = [{ t: 0, mode: 'day' }, { t: 9, mode: 'day' }, { t: 13, mode: 'dusk' }];
+    E.push({ type: 'person', look: 'man', x: 0.4, pose: 'flog', mood: 'calm', seed: 3, from: 1 }, { type: 'person', look: 'farmer', x: 0.57, pose: 'bowed', mood: 'sad', seed: 4, from: 1, facing: -1 });
+    if (/يشهد|طائفة|شهداء/.test(st)) witnesses(4);
+    if (num) E.push({ type: 'label', text: num === 'مائة' ? 'مئة جلدة' : NUMS[num] + (num === 'ثمانين' ? ' جلدة' : ''), x: 0.5, y: 0.14, from: 2, size: 1.2 });
+  } else if (kind === 'flog' || kind === 'hadd') {
+    E.push({ type: 'scales', x: 0.5, size: 1, from: 0.5, to: 10 });
+    if (num) E.push({ type: 'label', text: NUMS[num], x: 0.18, y: 0.3, from: 6, size: 1.4 });
+    if (/يشهد|طائفة|شهداء/.test(st)) witnesses(11);
+  } else if (kind === 'fast') {
+    sky = [{ t: 0, mode: 'day' }, { t: 7, mode: 'dusk' }, { t: 13, mode: 'night' }];
+    E.push({ type: 'stars', from: 12 }, { type: 'moon', x: 0.72, y: 0.2, phase: 0.08, from: 11 },
+      { type: 'person', look: 'man', x: 0.36, mood: 'calm', mood2: 'happy', moodAt: 13, seed: 31 }, { type: 'person', look: 'woman', x: 0.46, mood: 'calm', mood2: 'happy', moodAt: 13.3, seed: 32 }, { type: 'person', look: 'boy', x: 0.55, mood: 'calm', mood2: 'happy', moodAt: 13.6, seed: 33, size: 0.8 });
+  } else {
+    E.push({ type: 'scroll', x: 0.5, y: 0.4, from: 0.5, to: 12 }, { type: 'person', look: 'man', x: 0.24, mood: 'calm', seed: 41, from: 3 }, { type: 'person', look: 'farmer', x: 0.76, mood: 'calm', seed: 42, from: 3.5, facing: -1 });
+    if (/شهيدين|شهداء/.test(st)) E.push({ type: 'person', look: 'elder', x: 0.36, mood: 'calm', seed: 43, from: 8 }, { type: 'person', look: 'man', x: 0.64, mood: 'calm', seed: 44, from: 8.4, facing: -1 });
+  }
+  const caps = tafsirBeats(tafsir, D - 4);
+  caps.push({ t: D - 3.5, text: 'المشهد إيضاح للحكم — التفصيل في التفسير أسفل المشهد' });
+  return { duration: D, sky, elements: E, captions: caps, camera: kind === 'flog' && OPENISH.has(level) ? [{ t: 0, zoom: 1.25, x: 0.48, y: 0.6 }, { t: 9, zoom: 1.25, x: 0.48, y: 0.6 }, { t: 13, zoom: 1 }] : undefined };
+}
+
+// ───── الغيب (درجة «بلا قيود» فقط): الجنة والنار والقيامة بشخصيات عامة؛ لا يُرسم الله ولا الأنبياء ولا الملائكة ─────
+const GHAYB = {
+  paradise: w('الجنة', 'جنات', 'جنة', 'الفردوس', 'النعيم', 'جنات عدن', 'جنات النعيم'),
+  hell: w('النار', 'جهنم', 'السعير', 'الجحيم', 'سقر', 'لظى', 'الحطمة', 'الهاوية', 'أليم', 'عذاب'),
+  rising: w('القيامة', 'الساعة', 'البعث', 'الصور', 'الأجداث', 'القبور', 'زلزلت', 'زلزالها', 'يوم الدين', 'يبعثون', 'الحاقة', 'القارعة', 'الواقعة'),
+};
+function composeGhayb(kinds, tafsir) {
+  const B = 8, D = Math.max(18, kinds.length * B + 4), E = [], sky = [], cam = [];
+  kinds.forEach((kd, i) => {
+    const t0 = 1 + i * B, t1 = t0 + B, win = (el) => ({ ...el, from: t0, until: t1 + 0.4 });
+    if (kd === 'paradise') {
+      sky.push({ t: t0, mode: 'dawn' });
+      E.push(win({ type: 'ground', green: 1, cracks: false }), win({ type: 'river', size: 0.6, y: 0.75, from: t0, to: t0 + 2 }), win({ type: 'plants', kind: 'flowers', growFrom: -6, growTo: -1, count: 40 }),
+        win({ type: 'tree', x: 0.14, size: 1.15, growFrom: -6, growTo: -1, fruit: true, fruitFrom: -1 }), win({ type: 'tree', kind: 'palm', x: 0.86, size: 1.2, growFrom: -6, growTo: -1, fruit: true, fruitFrom: -1 }), win({ type: 'tree', kind: 'vine', x: 0.72, size: 1.1, growFrom: -6, growTo: -1, fruit: true, fruitFrom: -1 }),
+        win({ type: 'person', look: 'man', x: 0.36, pose: 'cheer', mood: 'happy', seed: 51 }), win({ type: 'person', look: 'woman', x: 0.46, mood: 'happy', seed: 52 }), win({ type: 'person', look: 'boy', x: 0.55, mood: 'happy', seed: 53, size: 0.8 }), win({ type: 'birds', count: 6, y: 0.2, x0: -0.1, x1: 1.1, mode: 'both' }));
+    } else if (kd === 'hell') {
+      sky.push({ t: t0, mode: 'storm' });
+      E.push(win({ type: 'ground', green: 0, color: '#4a2a1a', cracks: true }), win({ type: 'fire', size: 1.3, to: t0 + 2.5 }), win({ type: 'lightning' }),
+        win({ type: 'person', look: 'farmer', x: 0.4, mood: 'afraid', seed: 54 }), win({ type: 'person', look: 'man', x: 0.55, mood: 'sad', seed: 55 }));
+    } else {
+      sky.push({ t: t0, mode: 'storm' });
+      E.push(win({ type: 'mountains', count: 4, size: 0.8, seed: 9 }), win({ type: 'ground', green: 0.2, cracks: true }), win({ type: 'quake', to: t0 + 3 }), win({ type: 'wind', intensity: 1.6 }),
+        win({ type: 'person', look: 'man', x0: 0.2, x1: 0.35, mood: 'afraid', seed: 56 }), win({ type: 'person', look: 'woman', x0: 0.75, x1: 0.6, mood: 'afraid', seed: 57 }), win({ type: 'person', look: 'elder', x: 0.48, mood: 'afraid', seed: 58 }));
+    }
+    cam.push({ t: t0, zoom: 1.05, x: 0.47, y: 0.58 }, { t: t1 - 0.3, zoom: 1.25, x: 0.47, y: 0.6 });
+  });
+  const LBL = { paradise: 'الجنة: نعيم وأنهار وثمار', hell: 'النار: لهب وعذاب وندم', rising: 'يوم القيامة: زلزلة وفزع' };
+  const sk = []; let prev = 'day'; for (const k of sky) { if (k.t > 0) sk.push({ t: k.t - 0.8, mode: prev }); sk.push(k); prev = k.mode; }
+  const captions = kinds.map((kd, i) => ({ t: 1 + i * B, text: LBL[kd] }));
+  captions.push({ t: D - 3.5, text: 'تصوير تقريبي للغيب — الوصف الحق في الآية والتفسير أسفل المشهد' });
+  return { duration: D, sky: sk.length ? sk : [{ t: 0, mode: 'day' }], camera: cam, elements: E, captions };
+}
 
 // ───── معاني البشر: أفعال وأقوال وانفعالات (تُرسم في درجة «متساهل» فقط) ─────
 export const HUMAN = [
@@ -143,7 +213,7 @@ function compose(ids, level = 'lenient') {
     if (has('bees')) E.push({ type: 'bees', from: 1, to: 20 });
     if (has('web')) E.push({ type: 'web', windFrom: 10, tearFrom: 13, tearTo: 20 });
   }
-  if (level === 'lenient') {
+  if (OPENISH.has(level)) {
     if (has('birds')) E.push({ type: 'birds', count: 7, y: 0.2, x0: -0.1, x1: 1.05, mode: 'both', from: 1, to: D - 1 });
     if (has('cattle') && !water) E.push({ type: 'animal', kind: 'sheep', x: 0.62, graze: true }, { type: 'animal', kind: 'camel', x0: 0.98, x1: 0.8, from: 2, to: 9 }, { type: 'animal', kind: 'cow', x: 0.45, size: 0.9, graze: true, seed: 3 });
     if (has('people') && !water) E.push({ type: 'person', look: 'man', x0: 0.05, x1: 0.24, pose: wet ? 'cheer' : 'walk', from: 0, to: 6 }, { type: 'person', look: 'girl', x: 0.32, pose: wet || has('sun') || night ? 'lookup' : 'stand', seed: 2 });
@@ -169,7 +239,8 @@ export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onSt
 
   onStep('review', 'run'); await wait(350);
   const barriers = textBarriers(clean), visual = found.filter((f) => f.id !== 'earth' && !f.fig).length > 0;
-  const allowed = strictness === 'lenient' || (visual && (strictness === 'balanced' ? !barriers.some((b) => /غيبي|صفة/.test(b)) : !barriers.length));
+  RULING_ANY.lastIndex = 0; const isRuling = RULING_ANY.test(strip(clean));
+  const allowed = isRuling || OPENISH.has(strictness) || (strictness === 'open') || (visual && (strictness === 'balanced' ? !barriers.some((b) => /غيبي|صفة/.test(b)) : !barriers.length));
   if (allowed) {
     const notes = barriers.map((b) => `يُترك من المشهد: ${b}`);
     if (!visual) notes.push('لا محسوس كوني صريح في الآية: يُرسم معناها بشخصيات إن كان فيها فعل أو قول أو انفعال، وإلا فمشهد عام يرافق التفسير');
@@ -183,9 +254,42 @@ export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onSt
   }
 
   onStep('paint', 'run'); await wait(400);
-  const ids = found.filter((f) => !f.fig || strictness === 'lenient').map((f) => f.id), calm = !ids.some((x) => x !== 'earth');
+  const ids = found.filter((f) => !f.fig || OPENISH.has(strictness)).map((f) => f.id), calm = !ids.some((x) => x !== 'earth');
+  // الغيب في «بلا قيود»: يُرسم بترتيب وروده (النار والجنة والقيامة)
+  if (strictness === 'open') {
+    const st0 = strip(clean), gk = Object.entries(GHAYB).map(([k, re]) => { re.lastIndex = 0; const m = re.exec(st0); return m ? [k, m.index] : null; }).filter(Boolean).sort((x, y) => x[1] - y[1]).map((x) => x[0]);
+    if (gk.length) {
+      const scene = composeGhayb(gk, tafsir);
+      report.paint = { elements: scene.elements.map((e) => TYPE_NAMES[e.type]) };
+      onStep('paint', 'done', 'تصوير الغيب (بلا قيود): ' + scene.captions.slice(0, -1).map((c) => c.text.split(':')[0]).join('، '));
+      onStep('animate', 'run'); await wait(300);
+      report.animate = { duration: scene.duration, beats: scene.captions.length };
+      onStep('animate', 'done', `${scene.duration} ثانية، ${scene.captions.length} لقطات`);
+      onStep('final', 'run'); await wait(200);
+      report.review = { ...report.review, verdict: 'approve', checks: checkScene(scene), reasons: [], leaveOut: [...(report.review?.leaveOut || []), 'لا يُرسم الله تعالى ولا الأنبياء ولا الملائكة'] };
+      onStep('final', 'done', 'اجتاز الفحص الآلي للضوابط');
+      return { ok: true, scene, report };
+    }
+  }
+  // آيات الأحكام قبل أي تحليل آخر
+  const rk = Object.keys(RULING).find((k) => { RULING[k].lastIndex = 0; return RULING[k].test(strip(clean)); });
+  if (rk) {
+    const scene = composeRuling(rk, clean, tafsir, strictness);
+    if (!scene.camera) delete scene.camera;
+    if (!OPENISH.has(strictness)) scene.elements = scene.elements.filter((e) => e.type !== 'person');
+    report.paint = { elements: scene.elements.map((e) => TYPE_NAMES[e.type]) };
+    report.review = { ...report.review, leaveOut: [...(report.review?.leaveOut || []), 'آية حُكم: لا يُرسم الذنب أبدًا' + (rk === 'flog' && OPENISH.has(strictness) ? '، وتُرسم إقامة الحدّ بلا جروح ولا دم' : '، ويُعرض الحكم رمزيًا')] };
+    onStep('paint', 'done', (rk === 'flog' && OPENISH.has(strictness) ? 'إقامة الحدّ وشهود من المؤمنين' : 'عرض رمزي لآية حُكم') + ': ' + [...new Set(report.paint.elements)].join('، '));
+    onStep('animate', 'run'); await wait(300);
+    report.animate = { duration: scene.duration, beats: scene.captions.length };
+    onStep('animate', 'done', `${scene.duration} ثانية، ${scene.captions.length} لقطات`);
+    onStep('final', 'run'); await wait(200);
+    report.review = { ...report.review, verdict: 'approve', checks: checkScene(scene), reasons: [] };
+    onStep('final', 'done', 'اجتاز الفحص الآلي للضوابط');
+    return { ok: true, scene, report };
+  }
   // معاني البشر في الآية (بترتيب ورودها): تُبنى لها لقطات بشخصيات، إن لم يكن فيها مشهد كوني أوضح
-  const st = strip(clean), hum = strictness === 'lenient' ? HUMAN.map((hc) => { hc.re.lastIndex = 0; const m = hc.re.exec(st); return m ? { ...hc, at: m.index } : null; }).filter(Boolean).sort((x, y) => x.at - y.at) : [];
+  const st = strip(clean), hum = OPENISH.has(strictness) ? HUMAN.map((hc) => { hc.re.lastIndex = 0; const m = hc.re.exec(st); return m ? { ...hc, at: m.index } : null; }).filter(Boolean).sort((x, y) => x.at - y.at) : [];
   if (hum.length && (calm || hum.length >= ids.filter((x) => x !== 'earth').length)) {
     const scene = composeHuman(hum, clean);
     report.paint = { elements: scene.elements.map((e) => TYPE_NAMES[e.type]) };
@@ -205,7 +309,7 @@ export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onSt
   onStep('paint', 'done', [...new Set(report.paint.elements)].join('، '));
 
   onStep('animate', 'run'); await wait(400);
-  const caps = found.filter((f) => (f.id !== 'earth' || found.length === 1) && (!f.fig || strictness === 'lenient'));
+  const caps = found.filter((f) => (f.id !== 'earth' || found.length === 1) && (!f.fig || OPENISH.has(strictness)));
   scene.captions = calm ? tafsirBeats(tafsir, scene.duration) : caps.map((f, i) => ({ t: +(1 + (i * (scene.duration - 7)) / Math.max(1, caps.length)).toFixed(1), text: f.cap }));
   scene.captions.push({ t: scene.duration - 4.5, text: 'مشهد تقريبي آلي — المعنى الكامل في التفسير أسفل المشهد' });
   report.animate = { duration: scene.duration, beats: scene.captions.length };
