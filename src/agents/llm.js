@@ -84,10 +84,44 @@ async function ask(client, model, role, payload) {
 }
 
 // ───── مزوّد مجاني: Google Gemini (مفتاح مجاني من Google AI Studio) ─────
-export const GEMINI_MODELS = [['gemini-2.5-flash-lite', 'Gemini 2.5 Flash-Lite (مجاني، الأسرع)'], ['gemini-2.5-flash', 'Gemini 2.5 Flash (مجاني، أدق)']];
+export const GEMINI_DEFAULT = 'auto'; // «متكيّف»: يختار التطبيق النموذج لكل وكيل من النماذج المتاحة للمفتاح
+
+// المتكيّف: الأسرع لفهم التفسير والمراجعة، والأدق للرسم والتحريك؛ وعند رفض نموذج أو بلوغ حدّه يُجرَّب التالي
+const QUICK = new Set(['tafsir', 'review', 'final']);
+const listCache = new Map();
+async function candidates(apiKey, role) {
+  if (!listCache.has(apiKey)) listCache.set(apiKey, listGeminiModels(apiKey).catch(() => []));
+  const list = (await listCache.get(apiKey)).map((m) => m.id).filter((id) => !/preview|exp|tts|image|audio|live|embedding|gemma|learnlm/.test(id));
+  const lite = list.filter((id) => /flash-lite/.test(id)), flash = list.filter((id) => /flash/.test(id) && !/lite/.test(id)), pro = list.filter((id) => /pro/.test(id));
+  const order = QUICK.has(role) ? [...lite, ...flash, ...pro] : [...flash, ...pro, ...lite];
+  return [...new Set([...(QUICK.has(role) ? ['gemini-flash-lite-latest'] : ['gemini-flash-latest']), ...order, 'gemini-flash-lite-latest', 'gemini-flash-latest'])];
+}
+
+/** يجلب النماذج المتاحة لهذا المفتاح التي تدعم توليد النص، مرتّبة: Flash-Lite ثم Flash ثم غيرها. */
+export async function listGeminiModels(apiKey) {
+  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': apiKey } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new GeminiError(r.status, j?.error?.message || r.statusText);
+  const rank = (n) => (/flash-lite/.test(n) ? 0 : /flash/.test(n) ? 1 : 2) + (/latest/.test(n) ? -0.5 : 0) + (/preview|exp|tts|image|audio|live|embedding/.test(n) ? 5 : 0);
+  return (j.models || []).filter((m) => (m.supportedGenerationMethods || []).includes('generateContent') && /gemini/.test(m.name))
+    .map((m) => ({ id: m.name.replace(/^models\//, ''), name: m.displayName || m.name })).sort((a, b) => rank(a.id) - rank(b.id) || b.id.localeCompare(a.id));
+}
 export class GeminiError extends Error { constructor(status, message) { super(message); this.status = status; } }
 
 async function askGemini(apiKey, model, role, payload) {
+  if (model === 'auto') {
+    let last;
+    for (const m of (await candidates(apiKey, role)).slice(0, 5)) {
+      try { const out = await askOne(apiKey, m, role, payload); usedModels.add(m); return out; }
+      catch (err) { last = err; if (!(err instanceof GeminiError) || ![404, 429, 503, 500].includes(err.status)) throw err; }
+    }
+    throw last;
+  }
+  return askOne(apiKey, model, role, payload);
+}
+export const usedModels = new Set();
+
+async function askOne(apiKey, model, role, payload) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   let r;
   try {
@@ -101,7 +135,9 @@ async function askGemini(apiKey, model, role, payload) {
     });
   } catch { throw new GeminiError(0, 'network'); }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new GeminiError(r.status, j?.error?.message || r.statusText);
+  if (!r.ok) {
+    throw new GeminiError(r.status, j?.error?.message || r.statusText);
+  }
   const cand = j.candidates?.[0];
   if (!cand || cand.finishReason === 'SAFETY' || j.promptFeedback?.blockReason) throw new Error('رفض النموذج هذا الطلب');
   if (cand.finishReason === 'MAX_TOKENS') throw new Error('انقطع ردّ الوكيل قبل اكتماله');
@@ -113,7 +149,7 @@ export function explainError(err) {
     if (err.status === 0) return 'تعذّر الاتصال بخادم Gemini. تحقق من الإنترنت.';
     if (err.status === 400 && /API key/i.test(err.message)) return 'مفتاح Gemini غير صحيح. راجعه في الإعدادات.';
     if (err.status === 403) return 'مفتاح Gemini لا يملك صلاحية هذا النموذج.';
-    if (err.status === 404) return 'نموذج Gemini المختار غير متاح.';
+    if (err.status === 404) return 'نموذج Gemini المختار غير متاح. اختر «متكيّف» في الإعدادات ليختار التطبيق نموذجًا متاحًا.';
     if (err.status === 429) return 'تجاوزت حدّ الطلبات المجاني في Gemini. انتظر دقيقة ثم أعد المحاولة.';
     return `خطأ من Gemini (${err.status}): ${err.message}`;
   }
@@ -162,6 +198,7 @@ export async function runLLM({ apiKey, model = DEFAULT_MODEL, provider = 'claude
   scene.elements = scene.elements.filter((_, i) => !rm.has(i));
   for (const f of fin.caption_fixes || []) if (scene.captions[f.index] && typeof f.text === 'string') scene.captions[f.index].text = f.text.slice(0, 130);
   const checks = checkScene(scene), ok = (fin.verdict !== 'reject' || strictness === 'lenient') && checks.every((c) => c.ok) && scene.elements.length > 0;
+  if (provider === 'gemini' && model === 'auto') report.model = 'متكيّف: ' + [...usedModels].join('، ');
   report.review = { verdict: ok ? 'approve' : 'reject', checks, reasons: fin.issues || [], constraints: rv.constraints || [], leaveOut: rv.leave_out || [], note: fin.note };
   onStep('final', ok ? 'done' : 'stop', fin.note || (ok ? 'أُجيز' : 'رُفض المشهد'));
   return { ok, scene: ok ? scene : undefined, report };

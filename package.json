@@ -1,6 +1,6 @@
 {
   "name": "mashhadaya",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "مَشهَدآية — استوديو الآيات القرآنية: يحوّل معنى الآية إلى مشهد متحرك يُفهم بالنظر",
   "author": "Mashhadaya",
   "license": "MIT",
@@ -61,5 +61,5 @@
     "type": "git",
     "url": "https://github.com/abdulrahmanahmedelabed-prog/ayat_studio.git"
   },
-  "releaseNotes": "الوكلاء دون اتصال يرسمون معاني البشر: الدعوة والإعراض والنداء والحسرة والخوف والفرح والإنفاق وبرّ الوالدين والصلاة والعفو."
+  "releaseNotes": "Gemini «المتكيّف»: يختار النموذج المتاح لكل وكيل تلقائيًا، وجلب قائمة النماذج المتاحة لمفتاحك."
 }

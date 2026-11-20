@@ -46,13 +46,15 @@ async function ayat(ref) {
 const level = () => (STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS);
 const reciteOn = () => store.get('recite', '1') === '1';
 const sfxOn = () => store.get('sfx', '1') === '1';
-const GEMINI_MODELS = [['gemini-2.5-flash-lite', 'Gemini 2.5 Flash-Lite (مجاني، الأسرع)'], ['gemini-2.5-flash', 'Gemini 2.5 Flash (مجاني، أدق)']];
+const GEMINI_DEFAULT = 'auto';
+const GEMINI_MODELS = [['auto', 'المتكيّف — يختار النموذج لكل وكيل (يُنصح به)'], ['gemini-flash-lite-latest', 'أحدث Flash-Lite (الأسرع)'], ['gemini-flash-latest', 'أحدث Flash (أدق)']];
 // مزوّد وكلاء الذكاء الاصطناعي: Gemini (مجاني) أو Claude (مدفوع). يُستعمل المختار إن كان له مفتاح.
 function aiConfig() {
+  if (/^gemini-2\.5/.test(store.get('gmodel'))) store.set('gmodel', 'auto'); // اسم قديم أُوقف
   const prov = store.get('provider', 'gemini'), gk = store.get('gkey'), ck = store.get('key');
-  if (prov === 'gemini' && gk) return { provider: 'gemini', apiKey: gk, model: store.get('gmodel', 'gemini-2.5-flash-lite') };
+  if (prov === 'gemini' && gk) return { provider: 'gemini', apiKey: gk, model: store.get('gmodel', GEMINI_DEFAULT) };
   if (prov === 'claude' && ck) return { provider: 'claude', apiKey: ck, model: store.get('model', 'claude-opus-5-5') };
-  if (gk) return { provider: 'gemini', apiKey: gk, model: store.get('gmodel', 'gemini-2.5-flash-lite') };
+  if (gk) return { provider: 'gemini', apiKey: gk, model: store.get('gmodel', GEMINI_DEFAULT) };
   if (ck) return { provider: 'claude', apiKey: ck, model: store.get('model', 'claude-opus-5-5') };
   return null;
 }
@@ -305,7 +307,7 @@ async function pageStudio() {
   const ai = aiConfig(), key = !!ai, out = h('div', { class: 'result' }), steps = h('ol', { class: 'steps' });
   const btn = h('button', { class: 'primary' }, 'ابنِ المشهد');
   const level = STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS;
-  const mode = h('p', { class: 'mode' }, `المراجع الشرعي: ${STRICTNESS[level].name} (يُغيَّر من الإعدادات) · `, ai ? `الوضع: وكلاء الذكاء الاصطناعي (${ai.model}${ai.provider === 'gemini' ? '، مجاني' : ''})` : 'الوضع: وكلاء دون اتصال (قواعد محلية). أضف مفتاح API من الإعدادات لتفعيل وكلاء الذكاء الاصطناعي.');
+  const mode = h('p', { class: 'mode' }, `المراجع الشرعي: ${STRICTNESS[level].name} (يُغيَّر من الإعدادات) · `, ai ? `الوضع: وكلاء الذكاء الاصطناعي (${ai.model === 'auto' ? 'Gemini المتكيّف' : ai.model}${ai.provider === 'gemini' ? '، مجاني' : ''})` : 'الوضع: وكلاء دون اتصال (قواعد محلية). أضف مفتاح API من الإعدادات لتفعيل وكلاء الذكاء الاصطناعي.');
   const run = async () => {
     fix(); const ref = { s: +sel.value, from: +from.value, to: +to.value }, strict = STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS;
     store.set('s', String(ref.s)); store.set('a', String(ref.from));
@@ -317,7 +319,7 @@ async function pageStudio() {
       const A = await ayat(ref);
       const made = LIBRARY.find((x) => x.ref.s === ref.s && x.ref.from === ref.from && x.ref.to === ref.to);
       let res;
-      if (ai) { const { runLLM } = await import('./agents/llm.js'); res = await runLLM({ ...ai, refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
+      if (ai) { const L = await import('./agents/llm.js'); res = await L.runLLM({ ...ai, refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
       else res = await runOffline({ clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep);
       if (res.ok) { res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report, ref })); }
       else out.replaceChildren(h('div', { class: 'rejected' }, h('h2', {}, 'هذه الآية لا يُبنى لها مشهد'),
@@ -359,7 +361,20 @@ function pageAbout() {
   const model = h('select', { 'aria-label': 'النموذج' }, [['claude-opus-5-5', 'Claude Opus 5.5 (الافتراضي)'], ['claude-fable-5-2', 'Claude Fable 5.2 (الأقدر)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (أسرع)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (الأرخص)']].map(([v, t]) => h('option', { value: v }, t)));
   model.value = store.get('model', 'claude-opus-5-5');
   const gkey = h('input', { type: 'password', id: 'gkey', value: store.get('gkey'), placeholder: 'AIza…', autocomplete: 'off', dir: 'ltr', 'aria-label': 'مفتاح Gemini API' });
-  const gmodel = h('select', { id: 'gmodel', 'aria-label': 'نموذج Gemini' }, GEMINI_MODELS.map(([v, t]) => h('option', { value: v, selected: v === store.get('gmodel', 'gemini-2.5-flash-lite') }, t)));
+  const gmodel = h('select', { id: 'gmodel', 'aria-label': 'نموذج Gemini' });
+  const fillModels = (list) => {
+    const cur = store.get('gmodel', GEMINI_DEFAULT), all = [...GEMINI_MODELS, ...list.map((m) => [m.id, `${m.name} (${m.id})`])];
+    if (!all.some(([v]) => v === cur)) all.push([cur, cur]);
+    gmodel.replaceChildren(...all.filter(([v], i) => all.findIndex(([x]) => x === v) === i).map(([v, t]) => h('option', { value: v, selected: v === cur }, t)));
+  };
+  fillModels([]);
+  const loadModels = async () => {
+    const k = gkey.value.trim(); if (!k) { msg.textContent = 'أدخل مفتاح Gemini أولًا.'; return; }
+    msg.textContent = 'جارٍ جلب النماذج المتاحة لمفتاحك…';
+    try { const { listGeminiModels } = await import('./agents/llm.js'); const list = await listGeminiModels(k); fillModels(list); msg.textContent = `وُجد ${AR(list.length)} نموذجًا متاحًا لمفتاحك. اختر واحدًا ثم اضغط حفظ.`; }
+    catch (err) { const { explainError } = await import('./agents/llm.js'); msg.textContent = explainError(err); }
+  };
+  if (store.get('gkey')) setTimeout(() => loadModels().then(() => { msg.textContent = ''; }), 0);
   const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' }), rcMsg = h('span', { class: 'saved', role: 'status' }), upMsg = h('span', { class: 'saved', role: 'status' }), trMsg = h('span', { class: 'saved', role: 'status' }), lookMsg = h('p', { class: 'saved', role: 'status' });
   mount(h('div', { class: 'page narrow' },
     h('div', { class: 'hero' }, h('h1', {}, 'الضوابط والإعدادات')),
@@ -393,6 +408,7 @@ function pageAbout() {
       h('h4', { class: 'sub-h' }, 'Gemini (مجاني)'),
       h('div', { class: 'form' }, h('label', {}, 'مفتاح Gemini API', gkey), h('label', {}, 'النموذج', gmodel),
         h('button', { class: 'primary', onclick: () => { store.set('gkey', gkey.value.trim()); store.set('gmodel', gmodel.value); msg.textContent = gkey.value.trim() ? 'حُفظ مفتاح Gemini.' : 'حُذف مفتاح Gemini.'; } }, 'حفظ'),
+        h('button', { class: 'ghost', id: 'gmodels', onclick: loadModels }, 'جلب النماذج المتاحة'),
         h('button', { class: 'ghost', onclick: () => { gkey.value = ''; store.set('gkey', ''); msg.textContent = 'حُذف مفتاح Gemini.'; } }, 'حذف المفتاح')),
       h('h4', { class: 'sub-h' }, 'Claude (مدفوع)'),
       h('div', { class: 'form' }, h('label', {}, 'مفتاح Anthropic API', key), h('label', {}, 'النموذج', model),
