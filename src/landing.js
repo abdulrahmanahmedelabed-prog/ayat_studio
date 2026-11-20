@@ -58,3 +58,12 @@ for (const item of LIBRARY) {
   a.append(cv, s); gal.append(a);
   setTimeout(() => thumb(cv, item), 60 + gal.children.length * 12);
 }
+
+// روابط التنزيل المباشر من آخر إصدار منشور فعلًا (لا من version.json، فالموقع يُنشر قبل أن تجهز ملفات الإصدار)
+fetch('https://api.github.com/repos/abdulrahmanahmedelabed-prog/ayat_studio/releases/latest').then((r) => r.json()).then((rel) => {
+  const find = (re) => rel.assets?.find((x) => re.test(x.name))?.browser_download_url;
+  const setup = find(/Setup.*\.exe$/), port = find(/Portable.*\.exe$/);
+  if (setup) $('#dl-setup').href = setup;
+  if (port) $('#dl-portable').href = port;
+  if (rel.tag_name) $('#dl-ver').textContent = `آخر إصدار: ${AR(rel.tag_name.replace(/^v/, '')).replace(/\./g, '٫')}`;
+}).catch(() => {});

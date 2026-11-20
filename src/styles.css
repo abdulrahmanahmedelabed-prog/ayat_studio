@@ -181,3 +181,5 @@ input:not([type=range]), select { background: var(--raise); border: 1px solid va
 @media (max-width: 700px) { .nav button { font-size: .8rem; padding: 10px 2px; } }
 
 .cine-status { color: var(--gold); }
+
+.sub-h { margin: 18px 0 8px; font-size: .98rem; color: var(--gold); }

@@ -1,12 +1,11 @@
 // التلاوة: ملفات صوت لكل آية تُبثّ من الإنترنت وقت العرض (لا تُضمَّن في التطبيق).
 // المصدر الأول خادم quran.com، والاحتياطي everyayah.com.
 export const RECITERS = {
-  alafasy: { name: 'مشاري راشد العفاسي', qc: 'Alafasy/mp3', ea: 'Alafasy_128kbps' },
   husary: { name: 'محمود خليل الحصري', qc: 'Husary/mp3', ea: 'Husary_128kbps' },
   minshawi: { name: 'محمد صدّيق المنشاوي', qc: 'Minshawi/Murattal/mp3', ea: 'Minshawy_Murattal_128kbps' },
   abdulbaset: { name: 'عبد الباسط عبد الصمد', qc: 'AbdulBaset/Murattal/mp3', ea: 'Abdul_Basit_Murattal_192kbps' },
 };
-export const DEFAULT_RECITER = 'alafasy';
+export const DEFAULT_RECITER = 'husary';
 
 const pad = (n) => String(n).padStart(3, '0');
 export function ayahUrls(s, a, id = DEFAULT_RECITER) {

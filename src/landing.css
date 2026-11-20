@@ -61,3 +61,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 .feats li { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
 .feats h3 { font-size: 1.1rem; color: var(--gold); margin-bottom: 6px; }
 .feats p { color: #b8c6c3; font-size: .95rem; }
+
+div.get a { color: var(--gold); font-weight: 700; }
+div.get a + a { color: var(--muted); font-size: .92rem; }
+div.get a span::after { content: ' ←'; }

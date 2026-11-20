@@ -83,7 +83,40 @@ async function ask(client, model, role, payload) {
   return parseJSON(text);
 }
 
+// ───── مزوّد مجاني: Google Gemini (مفتاح مجاني من Google AI Studio) ─────
+export const GEMINI_MODELS = [['gemini-2.5-flash-lite', 'Gemini 2.5 Flash-Lite (مجاني، الأسرع)'], ['gemini-2.5-flash', 'Gemini 2.5 Flash (مجاني، أدق)']];
+export class GeminiError extends Error { constructor(status, message) { super(message); this.status = status; } }
+
+async function askGemini(apiKey, model, role, payload) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  let r;
+  try {
+    r = await fetch(url, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM + '\n\n' + AGENTS[role] }] },
+        contents: [{ role: 'user', parts: [{ text: JSON.stringify(payload, null, 1) }] }],
+        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 8192, temperature: 0.4 },
+      }),
+    });
+  } catch { throw new GeminiError(0, 'network'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new GeminiError(r.status, j?.error?.message || r.statusText);
+  const cand = j.candidates?.[0];
+  if (!cand || cand.finishReason === 'SAFETY' || j.promptFeedback?.blockReason) throw new Error('رفض النموذج هذا الطلب');
+  if (cand.finishReason === 'MAX_TOKENS') throw new Error('انقطع ردّ الوكيل قبل اكتماله');
+  return parseJSON((cand.content?.parts || []).map((p) => p.text || '').join(''));
+}
+
 export function explainError(err) {
+  if (err instanceof GeminiError) {
+    if (err.status === 0) return 'تعذّر الاتصال بخادم Gemini. تحقق من الإنترنت.';
+    if (err.status === 400 && /API key/i.test(err.message)) return 'مفتاح Gemini غير صحيح. راجعه في الإعدادات.';
+    if (err.status === 403) return 'مفتاح Gemini لا يملك صلاحية هذا النموذج.';
+    if (err.status === 404) return 'نموذج Gemini المختار غير متاح.';
+    if (err.status === 429) return 'تجاوزت حدّ الطلبات المجاني في Gemini. انتظر دقيقة ثم أعد المحاولة.';
+    return `خطأ من Gemini (${err.status}): ${err.message}`;
+  }
   if (err instanceof Anthropic.AuthenticationError) return 'مفتاح API غير صحيح. راجعه في الإعدادات.';
   if (err instanceof Anthropic.PermissionDeniedError) return 'المفتاح لا يملك صلاحية استخدام هذا النموذج.';
   if (err instanceof Anthropic.NotFoundError) return 'النموذج المختار غير متاح لهذا المفتاح.';
@@ -93,17 +126,18 @@ export function explainError(err) {
   return err?.message || String(err);
 }
 
-export async function runLLM({ apiKey, model = DEFAULT_MODEL, refText, verse, clean, tafsir, strictness = 'lenient' }, onStep) {
-  const client = makeClient(apiKey), report = { mode: 'ai', model, strictness };
+export async function runLLM({ apiKey, model = DEFAULT_MODEL, provider = 'claude', refText, verse, clean, tafsir, strictness = 'lenient' }, onStep) {
+  const client = provider === 'claude' ? makeClient(apiKey) : null, report = { mode: 'ai', model, strictness };
+  const call = (role, payload) => (provider === 'gemini' ? askGemini(apiKey, model, role, payload) : ask(client, model, role, payload));
   const ayah = { reference: refText, verse_text: verse, tafsir_muyassar: tafsir, strictness };
 
   onStep('tafsir', 'run');
-  const tf = await ask(client, model, 'tafsir', ayah);
+  const tf = await call('tafsir', ayah);
   report.tafsir = { source: 'التفسير الميسّر + تلخيص الوكيل', summary: tf.summary, points: tf.points || [], visuals: tf.visuals || [], notVisual: tf.not_visual || [] };
   onStep('tafsir', 'done', tf.summary);
 
   onStep('review', 'run');
-  const rv = await ask(client, model, 'review', { ...ayah, tafsir_agent: tf, automatic_flags: textBarriers(clean) });
+  const rv = await call('review', { ...ayah, tafsir_agent: tf, automatic_flags: textBarriers(clean) });
   if (rv.verdict !== 'allow') {
     report.review = { verdict: 'reject', reasons: rv.reasons || [] };
     onStep('review', 'stop', (rv.reasons || []).join(' — '));
@@ -112,18 +146,18 @@ export async function runLLM({ apiKey, model = DEFAULT_MODEL, refText, verse, cl
   onStep('review', 'done', [...(rv.constraints || []), ...(rv.leave_out || []).map((x) => 'يُترك: ' + x)].join(' — ') || 'أُجيز بلا قيود إضافية');
 
   onStep('paint', 'run');
-  const pt = await ask(client, model, 'paint', { ...ayah, meaning: tf, reviewer_constraints: rv });
+  const pt = await call('paint', { ...ayah, meaning: tf, reviewer_constraints: rv });
   onStep('paint', 'done', pt.notes || '');
 
   onStep('animate', 'run');
-  const an = await ask(client, model, 'animate', { ...ayah, meaning: tf, reviewer_constraints: rv, composition: pt });
+  const an = await call('animate', { ...ayah, meaning: tf, reviewer_constraints: rv, composition: pt });
   let { scene, dropped } = sanitizeScene(an, strictness);
   report.paint = { elements: scene.elements.map((e) => TYPE_NAMES[e.type]), notes: pt.notes, dropped };
   report.animate = { duration: scene.duration, beats: scene.captions.length };
   onStep('animate', 'done', `${scene.duration} ثانية، ${scene.captions.length} لقطات`);
 
   onStep('final', 'run');
-  const fin = await ask(client, model, 'final', { ...ayah, scene });
+  const fin = await call('final', { ...ayah, scene });
   const rm = new Set((fin.remove_elements || []).filter(Number.isInteger));
   scene.elements = scene.elements.filter((_, i) => !rm.has(i));
   for (const f of fin.caption_fixes || []) if (scene.captions[f.index] && typeof f.text === 'string') scene.captions[f.index].text = f.text.slice(0, 130);

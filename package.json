@@ -1,6 +1,6 @@
 {
   "name": "mashhadaya",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "مَشهَدآية — استوديو الآيات القرآنية: يحوّل معنى الآية إلى مشهد متحرك يُفهم بالنظر",
   "author": "Mashhadaya",
   "license": "MIT",
@@ -61,5 +61,5 @@
     "type": "git",
     "url": "https://github.com/abdulrahmanahmedelabed-prog/ayat_studio.git"
   },
-  "releaseNotes": "الوضع السينمائي: لقطات واقعية مولَّدة ومراجَعة بحركة كاميرا ومؤثرات سينمائية، مع التلاوة الحقيقية في الفيديو."
+  "releaseNotes": "وكلاء مجانيون بـ Gemini Flash-Lite، وتنزيل مباشر من صفحة الهبوط."
 }

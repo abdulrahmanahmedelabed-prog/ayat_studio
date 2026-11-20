@@ -46,6 +46,16 @@ async function ayat(ref) {
 const level = () => (STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS);
 const reciteOn = () => store.get('recite', '1') === '1';
 const sfxOn = () => store.get('sfx', '1') === '1';
+const GEMINI_MODELS = [['gemini-2.5-flash-lite', 'Gemini 2.5 Flash-Lite (مجاني، الأسرع)'], ['gemini-2.5-flash', 'Gemini 2.5 Flash (مجاني، أدق)']];
+// مزوّد وكلاء الذكاء الاصطناعي: Gemini (مجاني) أو Claude (مدفوع). يُستعمل المختار إن كان له مفتاح.
+function aiConfig() {
+  const prov = store.get('provider', 'gemini'), gk = store.get('gkey'), ck = store.get('key');
+  if (prov === 'gemini' && gk) return { provider: 'gemini', apiKey: gk, model: store.get('gmodel', 'gemini-2.5-flash-lite') };
+  if (prov === 'claude' && ck) return { provider: 'claude', apiKey: ck, model: store.get('model', 'claude-opus-5-5') };
+  if (gk) return { provider: 'gemini', apiKey: gk, model: store.get('gmodel', 'gemini-2.5-flash-lite') };
+  if (ck) return { provider: 'claude', apiKey: ck, model: store.get('model', 'claude-opus-5-5') };
+  return null;
+}
 const lookStyle = () => (STYLES[store.get('look')] || store.get('look') === 'drawn' ? store.get('look') : 'real');
 const reciter = () => (RECITERS[store.get('reciter')] ? store.get('reciter') : DEFAULT_RECITER);
 
@@ -292,10 +302,10 @@ async function pageStudio() {
   sel.value = store.get('s', '30'); from.value = to.value = store.get('a', '48');
   const fix = () => { const n = CH[sel.value - 1].n; from.max = to.max = n; from.value = Math.max(1, Math.min(n, +from.value || 1)); to.value = Math.max(+from.value, Math.min(n, +to.value || 1, +from.value + 5)); };
   sel.addEventListener('change', () => { from.value = to.value = 1; fix(); }); from.addEventListener('change', () => { to.value = from.value; fix(); }); to.addEventListener('change', fix);
-  const key = store.get('key'), out = h('div', { class: 'result' }), steps = h('ol', { class: 'steps' });
+  const ai = aiConfig(), key = !!ai, out = h('div', { class: 'result' }), steps = h('ol', { class: 'steps' });
   const btn = h('button', { class: 'primary' }, 'ابنِ المشهد');
   const level = STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS;
-  const mode = h('p', { class: 'mode' }, `المراجع الشرعي: ${STRICTNESS[level].name} (يُغيَّر من الإعدادات) · `, key ? `الوضع: وكلاء الذكاء الاصطناعي (${store.get('model', 'claude-opus-5-5')})` : 'الوضع: وكلاء دون اتصال (قواعد محلية). أضف مفتاح API من الإعدادات لتفعيل وكلاء الذكاء الاصطناعي.');
+  const mode = h('p', { class: 'mode' }, `المراجع الشرعي: ${STRICTNESS[level].name} (يُغيَّر من الإعدادات) · `, ai ? `الوضع: وكلاء الذكاء الاصطناعي (${ai.model}${ai.provider === 'gemini' ? '، مجاني' : ''})` : 'الوضع: وكلاء دون اتصال (قواعد محلية). أضف مفتاح API من الإعدادات لتفعيل وكلاء الذكاء الاصطناعي.');
   const run = async () => {
     fix(); const ref = { s: +sel.value, from: +from.value, to: +to.value }, strict = STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS;
     store.set('s', String(ref.s)); store.set('a', String(ref.from));
@@ -307,7 +317,7 @@ async function pageStudio() {
       const A = await ayat(ref);
       const made = LIBRARY.find((x) => x.ref.s === ref.s && x.ref.from === ref.from && x.ref.to === ref.to);
       let res;
-      if (key) { const { runLLM } = await import('./agents/llm.js'); res = await runLLM({ apiKey: key, model: store.get('model', 'claude-opus-5-5'), refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
+      if (ai) { const { runLLM } = await import('./agents/llm.js'); res = await runLLM({ ...ai, refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
       else res = await runOffline({ clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep);
       if (res.ok) { res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report, ref })); }
       else out.replaceChildren(h('div', { class: 'rejected' }, h('h2', {}, 'هذه الآية لا يُبنى لها مشهد'),
@@ -348,6 +358,8 @@ function pageAbout() {
   const key = h('input', { type: 'password', value: store.get('key'), placeholder: 'sk-ant-…', autocomplete: 'off', dir: 'ltr', 'aria-label': 'مفتاح Anthropic API' });
   const model = h('select', { 'aria-label': 'النموذج' }, [['claude-opus-5-5', 'Claude Opus 5.5 (الافتراضي)'], ['claude-fable-5-2', 'Claude Fable 5.2 (الأقدر)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (أسرع)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (الأرخص)']].map(([v, t]) => h('option', { value: v }, t)));
   model.value = store.get('model', 'claude-opus-5-5');
+  const gkey = h('input', { type: 'password', id: 'gkey', value: store.get('gkey'), placeholder: 'AIza…', autocomplete: 'off', dir: 'ltr', 'aria-label': 'مفتاح Gemini API' });
+  const gmodel = h('select', { id: 'gmodel', 'aria-label': 'نموذج Gemini' }, GEMINI_MODELS.map(([v, t]) => h('option', { value: v, selected: v === store.get('gmodel', 'gemini-2.5-flash-lite') }, t)));
   const msg = h('span', { class: 'saved', role: 'status' }), lvlMsg = h('p', { class: 'saved', role: 'status' }), rcMsg = h('span', { class: 'saved', role: 'status' }), upMsg = h('span', { class: 'saved', role: 'status' }), trMsg = h('span', { class: 'saved', role: 'status' }), lookMsg = h('p', { class: 'saved', role: 'status' });
   mount(h('div', { class: 'page narrow' },
     h('div', { class: 'hero' }, h('h1', {}, 'الضوابط والإعدادات')),
@@ -375,10 +387,17 @@ function pageAbout() {
         h('label', {}, 'القارئ', h('select', { id: 'reciter', onchange: (ev) => { store.set('reciter', ev.target.value); rcMsg.textContent = 'حُفظ القارئ.'; } }, Object.entries(RECITERS).map(([id, r]) => h('option', { value: id, selected: id === reciter() }, r.name)))),
         rcMsg)),
     h('section', { class: 'panel' }, h('h3', {}, 'وكلاء الذكاء الاصطناعي (اختياري)'),
-      h('p', {}, 'المكتبة والوكلاء دون اتصال يعملون بلا إنترنت. لتوليد مشاهد أدقّ لأي آية أدخل مفتاح Anthropic API الخاص بك. يُحفظ المفتاح على هذا الجهاز فقط ولا يُرسل إلا إلى api.anthropic.com، وتُحتسب تكلفة الاستخدام على حسابك.'),
-      h('div', { class: 'form' }, h('label', {}, 'مفتاح API', key), h('label', {}, 'النموذج', model),
-        h('button', { class: 'primary', onclick: () => { store.set('key', key.value.trim()); store.set('model', model.value); msg.textContent = key.value.trim() ? 'حُفظ.' : 'حُذف المفتاح.'; } }, 'حفظ'),
-        h('button', { class: 'ghost', onclick: () => { key.value = ''; store.set('key', ''); msg.textContent = 'حُذف المفتاح.'; } }, 'حذف المفتاح'), msg)),
+      h('p', {}, 'المكتبة والوكلاء دون اتصال يعملون بلا إنترنت ولا مفتاح. لتوليد مشاهد أدقّ لأي آية اختر مزوّدًا وأدخل مفتاحه. المفاتيح تُحفظ على هذا الجهاز فقط، ولا تُرسل إلا إلى خادم مزوّدها.'),
+      h('div', { class: 'levels', role: 'radiogroup', 'aria-label': 'المزوّد' }, [['gemini', 'Google Gemini — مجاني', 'مفتاح مجاني من aistudio.google.com (زر Get API key). حدود الاستخدام المجاني تكفي لعشرات الآيات يوميًا.'], ['claude', 'Anthropic Claude — مدفوع', 'أدقّ في الفهم والمراجعة، والتكلفة على حسابك. ويُشترط لتوليد لقطات سينمائية جديدة، لأنه يفحص كل صورة قبل عرضها.']].map(([id, name, desc]) =>
+        h('label', { class: 'level' }, h('input', { type: 'radio', name: 'provider', id: 'prov-' + id, value: id, checked: store.get('provider', 'gemini') === id, onchange: () => { store.set('provider', id); msg.textContent = 'حُفظ المزوّد: ' + name; } }), h('span', {}, h('b', {}, name), h('small', {}, desc))))),
+      h('h4', { class: 'sub-h' }, 'Gemini (مجاني)'),
+      h('div', { class: 'form' }, h('label', {}, 'مفتاح Gemini API', gkey), h('label', {}, 'النموذج', gmodel),
+        h('button', { class: 'primary', onclick: () => { store.set('gkey', gkey.value.trim()); store.set('gmodel', gmodel.value); msg.textContent = gkey.value.trim() ? 'حُفظ مفتاح Gemini.' : 'حُذف مفتاح Gemini.'; } }, 'حفظ'),
+        h('button', { class: 'ghost', onclick: () => { gkey.value = ''; store.set('gkey', ''); msg.textContent = 'حُذف مفتاح Gemini.'; } }, 'حذف المفتاح')),
+      h('h4', { class: 'sub-h' }, 'Claude (مدفوع)'),
+      h('div', { class: 'form' }, h('label', {}, 'مفتاح Anthropic API', key), h('label', {}, 'النموذج', model),
+        h('button', { class: 'primary', onclick: () => { store.set('key', key.value.trim()); store.set('model', model.value); msg.textContent = key.value.trim() ? 'حُفظ مفتاح Claude.' : 'حُذف مفتاح Claude.'; } }, 'حفظ'),
+        h('button', { class: 'ghost', onclick: () => { key.value = ''; store.set('key', ''); msg.textContent = 'حُذف مفتاح Claude.'; } }, 'حذف المفتاح')), msg),
     h('section', { class: 'panel' }, h('h3', {}, 'التحديثات'),
       h('p', {}, `الإصدار الحالي: ${AR(APP_VERSION).replace(/\./g, '٫')}. ` + (platform() === 'web' ? 'نسخة الموقع تتحدّث تلقائيًا.' : 'يفحص التطبيق عند فتحه هل صدرت نسخة أحدث، ويُظهر تنبيهًا فيه زر التنزيل.')),
       h('div', { class: 'form' }, h('button', { class: 'ghost', id: 'check-update', onclick: async () => {
