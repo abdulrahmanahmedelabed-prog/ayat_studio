@@ -8,13 +8,15 @@ import { drawScene } from './engine/render.js';
 
 const API = 'https://image.pollinations.ai/prompt/';
 export const STYLES = {
-  real: { name: 'سينمائي واقعي', suffix: 'cinematic film still, photorealistic, 35mm film, dramatic natural lighting, highly detailed, emotional, shallow depth of field' },
+  real: { name: 'سينمائي واقعي', suffix: 'cinematic film still, photorealistic, 35mm film, dramatic natural lighting, highly detailed, epic wide composition' },
   anime: { name: 'سينمائي أنمي', suffix: 'anime feature film still, high quality 2D hand-drawn anime, cinematic composition, dramatic volumetric lighting, detailed painted background, expressive detailed faces, historical Arabian setting, film grain' },
 };
 // قيود ثابتة في كل وصف: لا ملائكة ولا أجنحة على بشر ولا هالات ولا شخصيات دينية، ولباس محتشم
 export const LOOKOPTS = { grain: true, letterbox: true, intensity: 'dramatic' };
 const INTENSE = { calm: 'calm peaceful atmosphere', dramatic: 'dramatic atmosphere', intense: 'intense dramatic action, raw emotion, storm and fire, battle tension, no blood, no gore, no wounds' };
-export const SAFE = 'no text, no wings on people, no angels, no halos, no religious figures, no prophets, ordinary humans only, modest traditional Arab clothing with long sleeves, women wearing hijab';
+export const SAFE = 'no text, no angels, no wings, no halos, no religious figures, no prophets';
+export const SAFE_PEOPLE = 'ordinary humans only, modest traditional Arab clothing with long sleeves, women wearing hijab';
+const NOPEOPLE = 'empty landscape, no people, no humans, no person, no figure, no face';
 const OVERLAY = ['rain', 'hail', 'lightning'];
 
 const SKY = { night: 'at night under a starry sky', dawn: 'at sunrise, golden hour', day: 'in bright daylight, blue sky', dusk: 'at sunset, warm dusk light', storm: 'under a dark stormy sky', deep: 'in the deep dark ocean' };
@@ -76,7 +78,7 @@ const hash = (s) => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ 
 /** لقطات المشهد: واحدة لكل شرح (وأولها عند الصفر). */
 export function shotList(scene, style = 'real', key = '') {
   if (scene.shots?.length) // أوصاف مكتوبة يدويًا للمشهد
-    return scene.shots.map((sh, i, arr) => ({ t: sh.t, prompt: `${STYLES[style].suffix}, ${INTENSE[LOOKOPTS.intensity] || ''}, ${sh.prompt}. ${SAFE}${sh.people ? '' : ', no people, no humans'}`, seed: hash(key + ':' + i + ':' + style), end: arr[i + 1]?.t ?? scene.duration }));
+    return scene.shots.map((sh, i, arr) => ({ t: sh.t, prompt: `${STYLES[style].suffix}, ${INTENSE[LOOKOPTS.intensity] || ''}, ${sh.prompt}. ${SAFE}, ${sh.people ? SAFE_PEOPLE : NOPEOPLE}`, seed: hash(key + ':' + i + ':' + style), end: arr[i + 1]?.t ?? scene.duration }));
   const times = [...new Set([0, ...scene.captions.map((c) => c.t)])].sort((a, b) => a - b);
   return times.map((t, i) => {
     // لا شخص في اللقطة: يُطلب صراحةً ألّا يظهر أحد (المولّد يضيف أشخاصًا من عنده أحيانًا)
@@ -85,7 +87,7 @@ export function shotList(scene, style = 'real', key = '') {
     const emo = scene.elements.some((e) => e.type === 'person' && live(e, t + 0.8) && ((e.moodAt != null && t + 0.8 >= e.moodAt ? e.mood2 : e.mood) || 'calm') !== 'calm');
     const frame = !people ? (i === 0 ? 'epic wide establishing shot' : ['wide shot', 'low-angle wide shot', 'aerial view'][i % 3])
       : emo ? 'cinematic close-up on the face showing strong emotion' : i === 0 ? 'wide establishing shot' : ['medium shot', 'over-the-shoulder shot', 'low-angle medium shot'][i % 3];
-    const prompt = `${STYLES[style].suffix}, ${INTENSE[LOOKOPTS.intensity] || ''}, ${frame}, ${describe(scene, t + 0.8)}${people ? '' : ', empty landscape, nobody'}. ${SAFE}${people ? '' : ', no people, no humans, no human figures'}`;
+    const prompt = `${STYLES[style].suffix}, ${INTENSE[LOOKOPTS.intensity] || ''}, ${frame}, ${describe(scene, t + 0.8)}${people ? '' : ', empty landscape, nobody'}. ${SAFE}, ${people ? SAFE_PEOPLE : NOPEOPLE}`;
     return { t, prompt, seed: hash(key + ':' + i + ':' + style), end: times[i + 1] ?? scene.duration };
   });
 }
@@ -117,19 +119,38 @@ function grainTile() {
   g.putImageData(d, 0, 0); return grain;
 }
 
+// Hugging Face (رمز مجاني من huggingface.co/settings/tokens): صور FLUX تُجلب بالرمز فتدخل في الفيديو، وبلا انتظار ٤٦ ثانية
+export const HF = { token: '', model: 'black-forest-labs/FLUX.1-schnell' };
+export async function hfImage(prompt, seed) {
+  const r = await fetch(`https://router.huggingface.co/hf-inference/models/${HF.model}`, { method: 'POST',
+    headers: { authorization: `Bearer ${HF.token}`, 'content-type': 'application/json', accept: 'image/jpeg' },
+    body: JSON.stringify({ inputs: prompt, parameters: { width: 1024, height: 576, seed: seed % 2147483647 } }) });
+  if (!r.ok) { const e = new Error(r.status === 402 ? 'نفد رصيد Hugging Face المجاني لهذا الشهر' : `Hugging Face: ${r.status}`); e.status = r.status; throw e; }
+  return loadImg(URL.createObjectURL(await r.blob()));
+}
+
 export class Cinema {
   constructor(scene, style, key, bundled) {
     this.scene = scene; this.ready = 0;
     if (bundled?.length) { // لقطات مولَّدة مسبقًا ومراجَعة، مضمَّنة في التطبيق: فورية ودون إنترنت وتدخل في الفيديو
       this.local = true; this.recordable = true;
       this.shots = bundled.map((b, i, arr) => ({ t: b.t, src: b.src || './cine/' + b.file, end: arr[i + 1]?.t ?? scene.duration }));
-    } else { this.local = false; this.recordable = false; this.shots = shotList(scene, style, key); }
+    } else { this.local = false; this.hf = !!HF.token; this.recordable = this.hf; this.shots = shotList(scene, style, key); }
   }
   /** المضمَّنة تُحمَّل معًا؛ المولَّدة مباشرة تُطلب واحدة كل ٤٦ ثانية (حدّ الخدمة المجانية). */
   async load(onProgress, review, onFirst) {
     if (this.local) {
       await Promise.all(this.shots.map((s) => loadImg(s.src).then((im) => { s.img = im; }).catch(() => {})));
       this.ready = this.shots.filter((s) => s.img).length; onProgress?.(this.ready, this.shots.length); return this;
+    }
+    if (this.hf) { // Hugging Face: لقطة تلو لقطة دون انتظار؛ إن نفد الرصيد يعود إلى الخدمة المجانية
+      for (const [i, s] of this.shots.entries()) {
+        if (this.stopped) break;
+        try { s.img = await hfImage(s.prompt, s.seed); if (++this.ready === 1) onFirst?.(this); onProgress?.(i + 1, this.shots.length); }
+        catch (e) { this.hf = false; this.recordable = false; this.hfError = e.message; break; }
+      }
+      if (this.hf) return this;
+      this.shots.forEach((s) => { s.img = null; }); this.ready = 0;
     }
     for (const [i, s] of this.shots.entries()) {
       if (this.stopped) break;

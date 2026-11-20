@@ -8,7 +8,7 @@ import { LIBRARY } from './scenes/library.js';
 import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel, OPENISH } from './agents/rules.js';
 import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
 import { Sfx } from './sfx.js';
-import { Cinema, STYLES, makeReviewer, shotList, pickShots, LOOKOPTS } from './cinema.js';
+import { Cinema, STYLES, makeReviewer, shotList, pickShots, LOOKOPTS, HF } from './cinema.js';
 import { getShots, saveShots, clearShots } from './myshots.js';
 import { APP_VERSION, autoCheck, checkUpdate, platform, skip } from './update.js';
 import { WEB_TOOLS as WEBTOOLS } from './video.js';
@@ -221,6 +221,7 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
     cineStatus.textContent = `${sty}: يجري تجهيز اللقطات…`;
     Promise.all([shotsManifest(), getShots(myKey)]).then(([man, mine]) => {
     const own = mine?.blobs?.length ? mine.blobs.map((b, i) => ({ t: mine.times[i] ?? i * (scene.duration / mine.blobs.length), src: URL.createObjectURL(b) })) : null;
+    HF.token = store.get('hftoken');
     const cin = new Cinema(scene, lookStyle(), cine || title, own || (cine && (man[cine]?.[lookStyle()] || man[cine]?.real)));
     if (own) cin.own = true;
     // الصور المولَّدة مباشرة قد تخالف الضوابط (رأينا ذلك في التجربة)، فلا تُعرض إلا بعد مراجعة Claude لكل صورة
@@ -232,6 +233,7 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
       .then((c) => {
         if (!c.ready) { cineStatus.textContent = 'تعذّر توليد اللقطات (تحتاج إنترنت)، فيُعرض المشهد بالرسم.'; return; }
         swap(c);
+        if (c.hfError) cineStatus.dataset.hf = c.hfError;
         const rej = c.shots.reduce((n, s) => n + (s.rejected || 0), 0);
         cineStatus.textContent = c.own ? `${AR(c.ready)} لقطات من لقطاتك الخاصة` : c.local ? `${sty} · ${AR(c.ready)} لقطات مُعدّة ومراجَعة مسبقًا` : `${sty} · ${AR(c.ready)} لقطات راجعها المراجع الشرعي${rej ? ` واستبدل ${AR(rej)}` : ''} · الفيديو المحفوظ يكون بالرسوم`;
       });
@@ -482,6 +484,7 @@ function optSelect(key, label, options, def) {
 }
 
 function pageAbout() {
+  const hfMsg = h('p', { class: 'saved', role: 'status' });
   const key = h('input', { type: 'password', value: store.get('key'), placeholder: 'sk-ant-…', autocomplete: 'off', dir: 'ltr', 'aria-label': 'مفتاح Anthropic API' });
   const model = h('select', { 'aria-label': 'النموذج' }, [['claude-opus-5-5', 'Claude Opus 5.5 (الافتراضي)'], ['claude-fable-5-2', 'Claude Fable 5.2 (الأقدر)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (أسرع)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (الأرخص)']].map(([v, t]) => h('option', { value: v }, t)));
   model.value = store.get('model', 'claude-opus-5-5');
@@ -551,6 +554,9 @@ function pageAbout() {
       h('div', { class: 'form' }, h('label', {}, 'مفتاح Anthropic API', key), h('label', {}, 'النموذج', model),
         h('button', { class: 'primary', onclick: () => { store.set('key', key.value.trim()); store.set('model', model.value); msg.textContent = key.value.trim() ? 'حُفظ مفتاح Claude.' : 'حُذف مفتاح Claude.'; } }, 'حفظ'),
         h('button', { class: 'ghost', onclick: () => { key.value = ''; store.set('key', ''); msg.textContent = 'حُذف مفتاح Claude.'; } }, 'حذف المفتاح')), msg),
+    h('section', { class: 'panel' }, h('h3', {}, 'Hugging Face (مجاني)'),
+      h('p', {}, 'بإضافة رمز مجاني من huggingface.co/settings/tokens (نوع Read أو Fine-grained مع إذن Inference) تُولَّد اللقطات السينمائية بنموذج FLUX فورًا دون انتظار ٤٦ ثانية، وتدخل في الفيديو المسجَّل. للحساب المجاني رصيد شهري صغير؛ إن نفد يعود التطبيق تلقائيًا إلى الخدمة المجانية الأخرى.'),
+      h('div', { class: 'form' }, h('label', {}, 'رمز Hugging Face', h('input', { type: 'password', id: 'hftoken', dir: 'ltr', autocomplete: 'off', placeholder: 'hf_…', value: store.get('hftoken'), onchange: (ev) => { store.set('hftoken', ev.target.value.trim()); hfMsg.textContent = ev.target.value.trim() ? 'حُفظ الرمز.' : 'حُذف الرمز.'; } }))), hfMsg),
     h('section', { class: 'panel' }, h('h3', {}, 'التحديثات'),
       h('p', {}, `الإصدار الحالي: ${AR(APP_VERSION).replace(/\./g, '٫')}. ` + (platform() === 'web' ? 'نسخة الموقع تتحدّث تلقائيًا.' : 'يفحص التطبيق عند فتحه هل صدرت نسخة أحدث، ويُظهر تنبيهًا فيه زر التنزيل.')),
       h('div', { class: 'form' }, h('button', { class: 'ghost', id: 'check-update', onclick: async () => {
