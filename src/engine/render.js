@@ -151,9 +151,9 @@ const DRAW = {
     }
   },
   mountains(c, e, el, k, a) {
-    const n = el.count || 4, r = rng(el.seed || 5), base = lit(el.color || '#6f6a78', e);
+    const n = el.xs?.length || el.count || 4, r = rng(el.seed || 5), base = lit(el.color || '#6f6a78', e);
     for (let i = 0; i < n; i++) {
-      const cx = ((i + 0.5 + (r() - 0.5) * 0.5) / n) * e.W, w = e.W * (0.2 + r() * 0.14) * (el.size || 1) * (4 / Math.max(3, n));
+      const rx = r(), cx = (el.xs ? el.xs[i] : (i + 0.5 + (rx - 0.5) * 0.5) / n) * e.W, w = e.W * (0.2 + r() * 0.14) * (el.size || 1) * (4 / Math.max(3, n));
       const h = e.U * (0.24 + r() * 0.2) * (el.size || 1), by = e.hz + 2;
       if (el.roots) {
         const d = h * 0.75 * ease(k);
@@ -166,6 +166,16 @@ const DRAW = {
       c.quadraticCurveTo(cx - w * 0.18, by - h * 0.62, cx, by - h); c.quadraticCurveTo(cx + w * 0.2, by - h * 0.55, cx + w / 2, by); c.closePath(); c.fill();
       c.save(); c.clip();
       c.fillStyle = rgba('#000000', 0.2 * a); c.beginPath(); c.moveTo(cx, by - h); c.quadraticCurveTo(cx + w * 0.2, by - h * 0.55, cx + w / 2, by); c.lineTo(cx + w * 0.1, by); c.quadraticCurveTo(cx - w * 0.04, by - h * 0.45, cx, by - h); c.fill();
+      if (el.strata) { // جُدَد: طرائق أفقية بيض وحمر متفاوتة الدرجات
+        const sa = a * ease(span(e.t, el.streakFrom ?? -1, (el.streakFrom ?? -1) + 2.5)), cols = ['#f1ebe0', '#b8432f', '#e9dccb', '#d0663f', '#f6f1e8', '#8f2f22', '#e6b8a0', '#c1503a'];
+        for (let j = 0; j < 9; j++) { c.globalAlpha = 0.92 * sa; c.fillStyle = lit(cols[(j + i) % cols.length], e, 0.45); const y0 = by - h * (j / 9), y1 = by - h * ((j + 1) / 9);
+          c.beginPath(); c.moveTo(cx - w, y0 + Math.sin(j + i) * h * 0.02); c.quadraticCurveTo(cx, y0 - h * 0.03 * Math.sin(j * 1.7), cx + w, y0); c.lineTo(cx + w, y1); c.quadraticCurveTo(cx, y1 - h * 0.03 * Math.sin(j * 1.3 + 1), cx - w, y1); c.closePath(); c.fill(); }
+        c.globalAlpha = a;
+      }
+      if (el.gloss) { // غرابيب: سواد شديد بلمعة كجناح الغراب
+        const gl = c.createLinearGradient(cx - w * 0.3, by - h, cx + w * 0.2, by - h * 0.3); gl.addColorStop(0, rgba('#5a6a8a', 0.55 * a)); gl.addColorStop(0.5, rgba('#1a2030', 0.1 * a)); gl.addColorStop(1, rgba('#000', 0));
+        c.fillStyle = gl; c.fillRect(cx - w, by - h, w * 2, h);
+      }
       if (el.streaks) {
         const sa = a * ease(span(e.t, el.streakFrom ?? -1, (el.streakFrom ?? -1) + 2.5)); c.lineCap = 'round';
         for (let j = 0; j < 5; j++) {
@@ -263,7 +273,7 @@ const DRAW = {
     });
     if (fr > 0) {
       const r = rng(el.seed || 31); c.fillStyle = lit(el.fruitColor || (kind === 'olive' ? '#3b4a2a' : '#e2552f'), e, 0.5);
-      for (let i = 0; i < 16; i++) { const an = r() * 2 * PI, d = Math.sqrt(r()) * cr * 1.25; circle(c, x + Math.cos(an) * d + sway, cy + Math.sin(an) * d * 0.9 - cr * 0.15, S * 0.0085 * fr); }
+      for (let i = 0; i < (el.fruitCount || 16); i++) { const an = r() * 2 * PI, d = Math.sqrt(r()) * cr * 1.25; circle(c, x + Math.cos(an) * d + sway, cy + Math.sin(an) * d * 0.9 - cr * 0.15, S * 0.0085 * fr * (el.fruitSize || 1)); }
     }
   },
   grain(c, e, el, k, a) {

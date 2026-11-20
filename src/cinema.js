@@ -73,6 +73,8 @@ const hash = (s) => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ 
 
 /** لقطات المشهد: واحدة لكل شرح (وأولها عند الصفر). */
 export function shotList(scene, style = 'real', key = '') {
+  if (scene.shots?.length) // أوصاف مكتوبة يدويًا للمشهد
+    return scene.shots.map((sh, i, arr) => ({ t: sh.t, prompt: `${STYLES[style].suffix}, ${sh.prompt}. ${SAFE}, no people, no humans`, seed: hash(key + ':' + i + ':' + style), end: arr[i + 1]?.t ?? scene.duration }));
   const times = [...new Set([0, ...scene.captions.map((c) => c.t)])].sort((a, b) => a - b);
   return times.map((t, i) => {
     // لا شخص في اللقطة: يُطلب صراحةً ألّا يظهر أحد (المولّد يضيف أشخاصًا من عنده أحيانًا)
