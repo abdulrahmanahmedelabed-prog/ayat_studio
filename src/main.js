@@ -58,7 +58,7 @@ async function curatedShots(s, from, to) {
     const out = []; for (let a = from; a <= to; a++) for (const sh of d[a - 1]?.shots || []) out.push(sh); return out.length ? out : null; } catch { return null; }
 }
 async function withCurated(scene, ref) {
-  if (scene.shots?.length) return scene; const list = await curatedShots(ref.s, ref.from, ref.to); if (!list) return scene;
+  const list = await curatedShots(ref.s, ref.from, ref.to); if (!list) return scene;
   const step = scene.duration / list.length; scene.shots = list.slice(0, 8).map((sh, i) => ({ t: +(i * scene.duration / Math.min(8, list.length)).toFixed(2), prompt: sh.p, people: !!sh.people })); return scene;
 }
 
@@ -418,6 +418,12 @@ async function pageStudio() {
       const A = await ayat(ref);
       const made = LIBRARY.find((x) => x.ref.s === ref.s && x.ref.from === ref.from && x.ref.to === ref.to);
       let res;
+      if (made) { // مشهد مُعدّ يدويًا ومراجَع بلقطاته: أدقّ من أي توليد آلي
+        STEPS.forEach((id) => onStep(id, 'done', 'مشهد المكتبة المراجَع'));
+        const sc = forLevel(made, strict);
+        out.replaceChildren(playerView({ title: A.refText, scene: sc, A, report: curatedReport(sc, A), ref, favId: made.id, cine: made.id }));
+        btn.disabled = false; return;
+      }
       if (ai) {
         const L = await import('./agents/llm.js');
         try { res = await L.runLLM({ ...ai, refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }

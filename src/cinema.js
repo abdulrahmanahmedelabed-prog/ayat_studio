@@ -13,7 +13,7 @@ export const STYLES = {
 };
 // قيود ثابتة في كل وصف: لا ملائكة ولا أجنحة على بشر ولا هالات ولا شخصيات دينية، ولباس محتشم
 export const LOOKOPTS = { grain: true, letterbox: true, intensity: 'dramatic' };
-const INTENSE = { calm: 'calm peaceful atmosphere', dramatic: 'dramatic atmosphere', intense: 'intense dramatic action, raw emotion, storm and fire, battle tension, no blood, no gore, no wounds' };
+const INTENSE = { calm: 'calm peaceful atmosphere', dramatic: 'cinematic atmosphere', intense: 'intense dramatic action, raw emotion, storm and fire, battle tension, no blood, no gore, no wounds' };
 export const SAFE = 'no text, no angels, no winged humans, no halos, no religious figures, no prophets';
 export const SAFE_PEOPLE = 'ordinary humans only, modest traditional Arab clothing with long sleeves, women wearing hijab';
 const NOPEOPLE = 'empty landscape, no people, no humans, no person, no figure, no face';
@@ -78,7 +78,7 @@ const hash = (s) => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ 
 /** لقطات المشهد: واحدة لكل شرح (وأولها عند الصفر). */
 export function shotList(scene, style = 'real', key = '') {
   if (scene.shots?.length) // أوصاف مكتوبة يدويًا للمشهد
-    return scene.shots.map((sh, i, arr) => ({ t: sh.t, prompt: `${STYLES[style].suffix}, ${INTENSE[LOOKOPTS.intensity] || ''}, ${sh.prompt}. ${SAFE}, ${sh.people ? SAFE_PEOPLE : NOPEOPLE}`, seed: hash(key + ':' + i + ':' + style), end: arr[i + 1]?.t ?? scene.duration }));
+    return scene.shots.map((sh, i, arr) => ({ t: sh.t, prompt: `${sh.prompt}. ${STYLES[style].suffix}, ${INTENSE[LOOKOPTS.intensity] || ''}, ${SAFE}, ${sh.people ? SAFE_PEOPLE : NOPEOPLE}`, seed: hash(key + ':' + i + ':' + style), end: arr[i + 1]?.t ?? scene.duration }));
   const times = [...new Set([0, ...scene.captions.map((c) => c.t)])].sort((a, b) => a - b);
   return times.map((t, i) => {
     // لا شخص في اللقطة: يُطلب صراحةً ألّا يظهر أحد (المولّد يضيف أشخاصًا من عنده أحيانًا)
