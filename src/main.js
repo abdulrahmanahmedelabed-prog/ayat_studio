@@ -8,7 +8,7 @@ import { LIBRARY } from './scenes/library.js';
 import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel, OPENISH } from './agents/rules.js';
 import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
 import { Sfx } from './sfx.js';
-import { Cinema, STYLES, makeReviewer, shotList, pickShots, LOOKOPTS, HF } from './cinema.js';
+import { Cinema, STYLES, makeReviewer, shotList, pickShots, LOOKOPTS, HF, GEM } from './cinema.js';
 import { getShots, saveShots, clearShots } from './myshots.js';
 import { APP_VERSION, autoCheck, checkUpdate, platform, skip } from './update.js';
 import { WEB_TOOLS as WEBTOOLS } from './video.js';
@@ -221,7 +221,7 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
     cineStatus.textContent = `${sty}: يجري تجهيز اللقطات…`;
     Promise.all([shotsManifest(), getShots(myKey)]).then(([man, mine]) => {
     const own = mine?.blobs?.length ? mine.blobs.map((b, i) => ({ t: mine.times[i] ?? i * (scene.duration / mine.blobs.length), src: URL.createObjectURL(b) })) : null;
-    HF.token = store.get('hftoken');
+    HF.token = store.get('hftoken'); GEM.key = store.get('gkey');
     const cin = new Cinema(scene, lookStyle(), cine || title, own || (cine && (man[cine]?.[lookStyle()] || man[cine]?.real)));
     if (own) cin.own = true;
     // الصور المولَّدة مباشرة قد تخالف الضوابط (رأينا ذلك في التجربة)، فلا تُعرض إلا بعد مراجعة Claude لكل صورة

@@ -129,19 +129,48 @@ export async function hfImage(prompt, seed) {
   return loadImg(URL.createObjectURL(await r.blob()));
 }
 
+// Gemini (نفس مفتاح الوكلاء): نماذج الصور مثل gemini-*-flash-image، جودة سينمائية عالية؛ تدخل في الفيديو
+export const GEM = { key: '', model: '' };
+async function gemImageModel() {
+  if (GEM.model) return GEM.model;
+  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': GEM.key } });
+  const ids = ((await r.json()).models || []).filter((m) => /image/.test(m.name) && (m.supportedGenerationMethods || []).includes('generateContent')).map((m) => m.name.replace('models/', ''));
+  if (!ids.length) throw new Error('مفتاح Gemini لا يتيح نموذج صور');
+  return (GEM.model = ids.sort((a, b) => (/preview|exp/.test(a) - /preview|exp/.test(b)) || b.localeCompare(a))[0]);
+}
+export async function gemImage(prompt) {
+  const model = await gemImageModel();
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'x-goog-api-key': GEM.key, 'content-type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: 'Generate one 16:9 image: ' + prompt }] }], generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '16:9' } } }) });
+  if (!r.ok) throw new Error(r.status === 429 ? 'نفدت حصة صور Gemini المجانية اليوم' : `Gemini صور: ${r.status}`);
+  const part = (await r.json()).candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
+  if (!part) throw new Error('لم يُرجع Gemini صورة (ربما حجبها مرشّح الأمان)');
+  return loadImg(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
+}
+
 export class Cinema {
   constructor(scene, style, key, bundled) {
     this.scene = scene; this.ready = 0;
     if (bundled?.length) { // لقطات مولَّدة مسبقًا ومراجَعة، مضمَّنة في التطبيق: فورية ودون إنترنت وتدخل في الفيديو
       this.local = true; this.recordable = true;
       this.shots = bundled.map((b, i, arr) => ({ t: b.t, src: b.src || './cine/' + b.file, end: arr[i + 1]?.t ?? scene.duration }));
-    } else { this.local = false; this.hf = !!HF.token; this.recordable = this.hf; this.shots = shotList(scene, style, key); }
+    } else { this.local = false; this.gem = !!GEM.key; this.hf = !!HF.token; this.recordable = this.gem || this.hf; this.shots = shotList(scene, style, key); }
   }
   /** المضمَّنة تُحمَّل معًا؛ المولَّدة مباشرة تُطلب واحدة كل ٤٦ ثانية (حدّ الخدمة المجانية). */
   async load(onProgress, review, onFirst) {
     if (this.local) {
       await Promise.all(this.shots.map((s) => loadImg(s.src).then((im) => { s.img = im; }).catch(() => {})));
       this.ready = this.shots.filter((s) => s.img).length; onProgress?.(this.ready, this.shots.length); return this;
+    }
+    if (this.gem) { // Gemini أولًا: أعلى جودة
+      for (const [i, s] of this.shots.entries()) {
+        if (this.stopped) break;
+        try { s.img = await gemImage(s.prompt); if (++this.ready === 1) onFirst?.(this); onProgress?.(i + 1, this.shots.length); }
+        catch (e) { this.gem = false; this.gemError = e.message; break; }
+      }
+      if (this.gem) return this;
+      if (this.ready) { this.recordable = true; return this; } // ما وُلّد يكفي ويُكمَل بما سبقه
+      this.recordable = this.hf;
     }
     if (this.hf) { // Hugging Face: لقطة تلو لقطة دون انتظار؛ إن نفد الرصيد يعود إلى الخدمة المجانية
       for (const [i, s] of this.shots.entries()) {
