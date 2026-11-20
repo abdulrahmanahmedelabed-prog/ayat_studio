@@ -299,7 +299,7 @@ function tafsirBeats(tafsir, D) {
   return parts.map((text, i) => ({ t: +(1 + (i * (D - 7)) / Math.max(1, parts.length)).toFixed(1), text: text.length > 120 ? text.slice(0, 117) + '…' : text }));
 }
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const wait = () => Promise.resolve(); // بلا تأخير: المشهد يُبنى لحظيًا
 
 // يُرجع { ok, scene?, report } ويُبلغ عن كل مرحلة عبر onStep(id, state, detail)
 export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onStep) {

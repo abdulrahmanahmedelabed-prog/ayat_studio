@@ -424,7 +424,11 @@ async function pageStudio() {
         out.replaceChildren(playerView({ title: A.refText, scene: sc, A, report: curatedReport(sc, A), ref, favId: made.id, cine: made.id }));
         btn.disabled = false; return;
       }
-      if (ai) {
+      const show = (r) => { current?.cleanup?.(); current?.destroy(); current = null; r.report.timeline = r.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: r.scene, A, report: r.report, ref })); };
+      let quick = null;
+      if (ai) { // لحظيًا: مشهد الوكلاء دون اتصال يُعرض فورًا، ويُحسَّن بالذكاء الاصطناعي في الخلفية
+        quick = await runOfflineRange(A.rows, strict, () => {});
+        if (quick.ok) { await withCurated(quick.scene, ref); show(quick); out.prepend(h('p', { class: 'note ai-pending', role: 'status' }, 'يُعرض المشهد الآن، ويحسّنه الذكاء الاصطناعي في الخلفية…')); }
         const L = await import('./agents/llm.js');
         try { res = await L.runLLM({ ...ai, refText: A.refText, verse: A.verse, clean: A.clean, tafsir: A.tafsir, strictness: strict }, onStep); }
         catch (err) { if (!OPENISH.has(strict)) throw err; res = { ok: false, aiError: L.explainError(err) }; }
@@ -437,7 +441,8 @@ async function pageStudio() {
         }
       }
       else res = await runOfflineRange(A.rows, strict, onStep);
-      if (res.ok) { await withCurated(res.scene, ref); res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report, ref })); }
+      if (quick?.ok && (!res.ok || res === quick || res.report?.review?.reasons?.[0]?.startsWith('تعذّر المشهد'))) { out.querySelector('.ai-pending')?.remove(); btn.disabled = false; return; } // يبقى المشهد اللحظي
+      if (res.ok) { await withCurated(res.scene, ref); show(res); }
       else out.replaceChildren(h('div', { class: 'rejected' }, h('h2', {}, 'هذه الآية لا يُبنى لها مشهد'),
         h('p', {}, 'قرّر المراجع الشرعي أن تصويرها لا يصحّ. تُقرأ وتُفهم من التفسير:'), h('ul', {}, (res.report.review?.reasons || []).map((r) => h('li', {}, r))), verseBlock(A), tafsirBlock(A)));
       if (made) out.prepend(h('button', { class: 'hint', onclick: () => go('scene/' + made.id) }, 'لهذه الآية مشهد مُعدّ ومراجَع يدويًا في المكتبة ←'));

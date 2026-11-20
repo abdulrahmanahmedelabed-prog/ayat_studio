@@ -163,11 +163,11 @@ export class Cinema {
       this.ready = this.shots.filter((s) => s.img).length; onProgress?.(this.ready, this.shots.length); return this;
     }
     if (this.gem) { // Gemini أولًا: أعلى جودة
-      for (const [i, s] of this.shots.entries()) {
-        if (this.stopped) break;
-        try { s.img = await gemImage(s.prompt); if (++this.ready === 1) onFirst?.(this); onProgress?.(i + 1, this.shots.length); }
-        catch (e) { this.gem = false; this.gemError = e.message; break; }
-      }
+      const q = [...this.shots]; // ثلاث لقطات معًا: أسرع بكثير من واحدة تلو أخرى
+      const worker = async () => { while (q.length && this.gem && !this.stopped) { const s = q.shift();
+        try { s.img = await gemImage(s.prompt); if (++this.ready === 1) onFirst?.(this); onProgress?.(this.ready, this.shots.length); }
+        catch (e) { if (!this.ready) { this.gem = false; this.gemError = e.message; } } } };
+      await Promise.all([worker(), worker(), worker()]);
       if (this.gem) return this;
       if (this.ready) { this.recordable = true; return this; } // ما وُلّد يكفي ويُكمَل بما سبقه
       this.recordable = this.hf;
