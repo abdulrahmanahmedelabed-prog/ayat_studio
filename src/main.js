@@ -13,6 +13,7 @@ import { getShots, saveShots, clearShots } from './myshots.js';
 import { APP_VERSION, autoCheck, checkUpdate, platform, skip } from './update.js';
 import { WEB_TOOLS as WEBTOOLS } from './video.js';
 const V = import('./video.js');
+import { buildSync } from './sync.js';
 import { runOffline, runOfflineRange, INTENSITY } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
 import { strip } from './agents/rules.js';
@@ -242,19 +243,20 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
   // التلاوة: حين تعمل تقود زمن المشهد، فيمتد المشهد على طول التلاوة
   const status = h('p', { class: 'note audio-status', role: 'status' });
   const rc = ref && reciteOn() ? new Recitation(ref, reciter()) : null;
-  let audioOk = !!rc;
+  let audioOk = !!rc, sync = null;
+  const toAudio = (t) => sync ? sync.toAudio(t) : (t / scene.duration) * rc.total, toScene = (a) => sync ? sync.toScene(a) : (a / rc.total) * scene.duration;
   if (rc) {
     status.textContent = `التلاوة: ${RECITERS[reciter()].name} — جارٍ التحميل…`;
-    rc.load().then(() => { status.textContent = `التلاوة: ${RECITERS[reciter()].name}`; if (p.playing) { rc.seekFrac(p.t / scene.duration); rc.play().catch(blocked); } })
+    rc.load().then(() => { sync = A?.rows ? buildSync(scene, A.rows.map((r) => r.clean), rc.items.map((x) => x.dur)) : null; status.textContent = `التلاوة: ${RECITERS[reciter()].name}` + (sync?.anchors > 2 ? ' · متزامنة مع ألفاظ الآية' : ''); if (p.playing) { rc.seekTime(toAudio(p.t)); rc.play().catch(blocked); } })
       .catch(() => { audioOk = false; status.textContent = 'تعذّر تحميل التلاوة (تحتاج اتصالًا بالإنترنت). يعمل المشهد دون صوت.'; });
     rc.onend = () => { p.seek(scene.duration); p.pause(); };
   }
   function blocked() { p.pause(); status.textContent = 'اضغط زر التشغيل لسماع التلاوة مع المشهد.'; }
-  p.clock = () => (rc && audioOk && rc.total && rc.playing ? rc.progress * scene.duration : null);
+  p.clock = () => (rc && audioOk && rc.total && rc.playing ? toScene(rc.time) : null);
   p.hooks = {
-    play: (t) => { sfx?.start(); sfx?.duck(!!(rc && audioOk)); if (rc && audioOk && rc.total) { rc.seekFrac(t / scene.duration); rc.play().catch(blocked); } },
+    play: (t) => { sfx?.start(); sfx?.duck(!!(rc && audioOk)); if (rc && audioOk && rc.total) { rc.seekTime(toAudio(t)); rc.play().catch(blocked); } },
     pause: () => { rc?.pause(); sfx?.stop(); },
-    seek: (t) => { if (rc && audioOk && rc.total) rc.seekFrac(t / scene.duration); },
+    seek: (t) => { if (rc && audioOk && rc.total) rc.seekTime(toAudio(t)); },
   };
   p.cleanup = () => { if (p.cinema) p.cinema.stopped = true; rc?.destroy(); sfx?.close(); p.dead = true; };
   bar.addEventListener('input', () => p.seek(+bar.value));
@@ -264,7 +266,7 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
   const speed = h('button', { class: 'ghost', onclick: () => { p.speed = SPEEDS[(SPEEDS.indexOf(p.speed) + 1) % SPEEDS.length]; rc?.setRate(p.speed); speed.textContent = spLabel(p.speed); } }, spLabel(p.speed));
   const wrap = h('div', { class: 'stagewrap' }, canvas, cap);
   const canRec = typeof MediaRecorder !== 'undefined' && !!canvas.captureStream && !/; wv\)/.test(navigator.userAgent);
-  const rec = canRec ? h('button', { class: 'ghost', onclick: () => recordVideo(p, scene, title, rec, rc && audioOk ? rc : null, status, { ref: A.refText, verse: A.verse, reciter: rc ? RECITERS[reciter()].name : '' }) }, 'حفظ فيديو') : null;
+  const rec = canRec ? h('button', { class: 'ghost', onclick: () => recordVideo(p, scene, title, rec, rc && audioOk ? rc : null, status, { ref: A.refText, verse: A.verse, reciter: rc ? RECITERS[reciter()].name : '', texts: A.rows.map((r) => r.clean) }) }, 'حفظ فيديو') : null;
   const full = h('button', { class: 'ghost', onclick: () => (document.fullscreenElement ? document.exitFullscreen() : wrap.requestFullscreen?.()) }, 'ملء الشاشة');
   canvas.addEventListener('click', () => p.toggle());
   queueMicrotask(() => { current = p; p.setScene(scene); setTimeout(() => { if (!p.dead) p.play(); }, 350); });
@@ -291,6 +293,8 @@ async function recordVideo(p, scene, title, btn, rc, status, meta = {}) {
     catch { src = null; if (status) status.textContent = 'تعذّر إدخال التلاوة في الفيديو من هذا الخادم، فسُجّلت أصوات الطبيعة وحدها.'; }
     btn.disabled = false;
   }
+  // نفس التزامن عند التسجيل: مدد الآيات من الملفات المفكوكة، موزونة على طول التسجيل
+  const vsync = src && meta.texts ? buildSync(scene, meta.texts, rc.items.map((x) => x.dur * (total / (rc.total || total)))) : null;
   const sfx = sfxOn() ? new Sfx() : null;
   if (sfx) { sfx.start(actx, mix); sfx.duck(!!src); }
   if (src || sfx) stream.addTrack(mix.stream.getAudioTracks()[0]);
@@ -323,7 +327,7 @@ async function recordVideo(p, scene, title, btn, rc, status, meta = {}) {
         card(fade(el, 0, INTRO), [[meta.ref || title, '700 64px Tajawal, sans-serif', GOLD, H / 2 - 40], [verse, '400 54px "Amiri Quran", Amiri, serif', '#f5eedb', H / 2 + 110], ['مَشهَدآية', '700 30px Tajawal, sans-serif', 'rgba(255,255,255,.55)', H - 90]]);
       } else if (el < INTRO + total) {
         if (!started) { started = true; src?.start(); }
-        const st = el - INTRO, t = (st / total) * scene.duration;
+        const st = el - INTRO, t = vsync ? vsync.toScene(st) : (st / total) * scene.duration;
         render(ctx, W, H, scene, t); sfx?.update(scene, t);
         let c = null; for (const x of scene.captions) if (x.t <= t) c = x;
         if (c) {

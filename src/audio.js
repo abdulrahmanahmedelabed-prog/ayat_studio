@@ -37,6 +37,8 @@ export class Recitation {
     let t = 0; for (let j = 0; j < this.i; j++) t += this.items[j].dur;
     return Math.min(1, (t + (this.items[this.i]?.el.currentTime || 0)) / this.total);
   }
+  get time() { let t = 0; for (let j = 0; j < this.i; j++) t += this.items[j].dur; return t + (this.items[this.i]?.el.currentTime || 0); }
+  seekTime(t) { if (this.total) this.seekFrac(t / this.total); }
   seekFrac(f) {
     if (!this.total) return;
     let t = Math.max(0, Math.min(1, f)) * this.total, j = 0;
