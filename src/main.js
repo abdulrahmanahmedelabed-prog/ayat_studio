@@ -8,7 +8,8 @@ import { LIBRARY } from './scenes/library.js';
 import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel, OPENISH } from './agents/rules.js';
 import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
 import { Sfx } from './sfx.js';
-import { Cinema, STYLES, makeReviewer } from './cinema.js';
+import { Cinema, STYLES, makeReviewer, shotList, pickShots } from './cinema.js';
+import { getShots, saveShots, clearShots } from './myshots.js';
 import { APP_VERSION, autoCheck, checkUpdate, platform, skip } from './update.js';
 import { runOffline, runOfflineRange } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
@@ -128,6 +129,29 @@ function reportBlock(rep, seek) {
       rep.timeline ? h('ol', { class: 'timeline' }, rep.timeline.map((c) => h('li', {}, h('button', { onclick: () => seek?.(c.t + 0.05), 'aria-label': 'انتقل إلى هذه اللقطة' }, h('time', {}, AR(Math.round(c.t)) + 'ث'), c.text)))) : null));
 }
 
+// «لقطاتك الخاصة»: أوصاف جاهزة للنسخ إلى مولّد صور (كتطبيق Gemini)، ثم استيراد الصور بالترتيب
+function myShotsBlock(scene, key, seedKey) {
+  const style = lookStyle() === 'drawn' ? 'anime' : lookStyle();
+  const shots = pickShots(shotList(scene, style, seedKey), 6);
+  const msg = h('p', { class: 'saved', role: 'status' });
+  const copy = async (text) => { try { await navigator.clipboard.writeText(text); msg.textContent = 'نُسخ.'; } catch { msg.textContent = 'تعذّر النسخ؛ حدّد النص وانسخه يدويًا.'; } };
+  const all = shots.map((s, i) => `اللقطة ${i + 1} (16:9):\n${s.prompt}`).join('\n\n');
+  const input = h('input', { type: 'file', id: 'myshots-file', accept: 'image/*', multiple: true, onchange: async () => {
+    const files = [...input.files].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).slice(0, shots.length);
+    if (!files.length) return;
+    await saveShots(key, { blobs: files, times: shots.map((s) => s.t) });
+    msg.textContent = `حُفظت ${AR(files.length)} صور على هذا الجهاز. أعد فتح المشهد لتظهر.`;
+  } });
+  return h('details', { class: 'panel myshots' }, h('summary', {}, h('b', {}, 'لقطاتك الخاصة'), h('small', {}, ' — جودة احترافية مجانًا بتطبيق Gemini')),
+    h('ol', { class: 'howto' },
+      h('li', {}, 'انسخ أوصاف اللقطات، وألصقها في تطبيق Gemini، واطلب: «ولّد صورة لكل لقطة بالترتيب، مقاس 16:9».'),
+      h('li', {}, 'نزّل الصور وسمّها بالترتيب (1، 2، 3…)، ثم استوردها هنا.'),
+      h('li', {}, 'راجع الصور قبل استيرادها: لا ملائكة ولا أنبياء ولا لباس غير محتشم.')),
+    h('div', { class: 'actions-row' }, h('button', { class: 'primary', onclick: () => copy(all) }, `نسخ أوصاف ${AR(shots.length)} لقطات`),
+      h('label', { class: 'ghost filebtn' }, 'استيراد الصور', input),
+      h('button', { class: 'ghost', onclick: async () => { await clearShots(key); msg.textContent = 'حُذفت لقطاتك لهذا المشهد.'; } }, 'حذف لقطاتي')), msg);
+}
+
 function favButton(id) {
   const b = h('button', { class: 'fav', 'aria-pressed': String(isFav(id)), onclick: () => { const on = toggleFav(id); b.setAttribute('aria-pressed', String(on)); b.lastChild.textContent = on ? 'في المفضّلة' : 'أضف إلى المفضّلة'; } }, h('span', { 'aria-hidden': 'true' }, '♥'), h('span', {}, isFav(id) ? 'في المفضّلة' : 'أضف إلى المفضّلة'));
   return b;
@@ -155,13 +179,16 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
   const sfx = sfxOn() ? new Sfx() : null;
   // الوضع السينمائي: تُولَّد صور اللقطات أثناء العرض بالرسم، ثم يتحوّل المشهد إليها
   const cineStatus = h('p', { class: 'note cine-status', role: 'status' });
+  const myKey = 'shots:' + (cine || title);
   if (lookStyle() !== 'drawn') {
     const key = store.get('key'), sty = STYLES[lookStyle()].name;
     cineStatus.textContent = `${sty}: يجري تجهيز اللقطات…`;
-    shotsManifest().then((man) => {
-    const cin = new Cinema(scene, lookStyle(), cine || title, cine && man[cine]?.[lookStyle()]);
+    Promise.all([shotsManifest(), getShots(myKey)]).then(([man, mine]) => {
+    const own = mine?.blobs?.length ? mine.blobs.map((b, i) => ({ t: mine.times[i] ?? i * (scene.duration / mine.blobs.length), src: URL.createObjectURL(b) })) : null;
+    const cin = new Cinema(scene, lookStyle(), cine || title, own || (cine && (man[cine]?.[lookStyle()] || man[cine]?.real)));
+    if (own) cin.own = true;
     // الصور المولَّدة مباشرة قد تخالف الضوابط (رأينا ذلك في التجربة)، فلا تُعرض إلا بعد مراجعة Claude لكل صورة
-    if (!cin.local && !key) { cineStatus.textContent = `${sty}: لهذا المشهد لقطات لم تُراجَع بعد، فيُعرض بالرسوم. لتوليد لقطات سينمائية لأي آية أضف مفتاح Claude في الإعدادات ليراجع المراجعُ الشرعي كل صورة قبل عرضها.`; return; }
+    if (!cin.local && !cin.own && !key) { cineStatus.textContent = `${sty}: لهذا المشهد لقطات لم تُراجَع بعد، فيُعرض بالرسوم. لتوليد لقطات سينمائية لأي آية أضف مفتاح Claude في الإعدادات ليراجع المراجعُ الشرعي كل صورة قبل عرضها.`; return; }
     p.cinema = cin;
     const swap = (c) => { p.render = c.draw.bind(c); p.recordable = c.recordable; p.draw(); };
     return cin.load((d, n, waiting) => { cineStatus.textContent = waiting ? `${sty}: ${AR(d)} من ${AR(n)} لقطات جاهزة · اللقطة التالية بعد ٤٦ ثانية (حدّ الخدمة المجانية)` : `${sty}: ${AR(d)} من ${AR(n)} لقطات…`; },
@@ -170,7 +197,7 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
         if (!c.ready) { cineStatus.textContent = 'تعذّر توليد اللقطات (تحتاج إنترنت)، فيُعرض المشهد بالرسم.'; return; }
         swap(c);
         const rej = c.shots.reduce((n, s) => n + (s.rejected || 0), 0);
-        cineStatus.textContent = c.local ? `${sty} · ${AR(c.ready)} لقطات مُعدّة ومراجَعة مسبقًا` : `${sty} · ${AR(c.ready)} لقطات راجعها المراجع الشرعي${rej ? ` واستبدل ${AR(rej)}` : ''} · الفيديو المحفوظ يكون بالرسوم`;
+        cineStatus.textContent = c.own ? `${AR(c.ready)} لقطات من لقطاتك الخاصة` : c.local ? `${sty} · ${AR(c.ready)} لقطات مُعدّة ومراجَعة مسبقًا` : `${sty} · ${AR(c.ready)} لقطات راجعها المراجع الشرعي${rej ? ` واستبدل ${AR(rej)}` : ''} · الفيديو المحفوظ يكون بالرسوم`;
       });
     });
   }
@@ -197,59 +224,85 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
   const speed = h('button', { class: 'ghost', onclick: () => { p.speed = p.speed === 1 ? 0.5 : 1; rc?.setRate(p.speed); speed.textContent = p.speed === 1 ? 'سرعة ×١' : 'سرعة ×½'; } }, 'سرعة ×١');
   const wrap = h('div', { class: 'stagewrap' }, canvas, cap);
   const canRec = typeof MediaRecorder !== 'undefined' && !!canvas.captureStream && !/; wv\)/.test(navigator.userAgent);
-  const rec = canRec ? h('button', { class: 'ghost', onclick: () => recordVideo(p, scene, title, rec, rc && audioOk ? rc : null, status) }, 'حفظ فيديو') : null;
+  const rec = canRec ? h('button', { class: 'ghost', onclick: () => recordVideo(p, scene, title, rec, rc && audioOk ? rc : null, status, { ref: A.refText, verse: A.verse, reciter: rc ? RECITERS[reciter()].name : '' }) }, 'حفظ فيديو') : null;
   const full = h('button', { class: 'ghost', onclick: () => (document.fullscreenElement ? document.exitFullscreen() : wrap.requestFullscreen?.()) }, 'ملء الشاشة');
   canvas.addEventListener('click', () => p.toggle());
   queueMicrotask(() => { current = p; p.setScene(scene); setTimeout(() => { if (!p.dead) p.play(); }, 350); });
   return h('div', { class: 'player' },
     h('div', { class: 'col-stage' }, wrap, h('div', { class: 'controls' }, playBtn, bar, time, speed, full, rec),
       lookStyle() !== 'drawn' ? cineStatus : null, rc ? status : null, h('p', { class: 'note' }, 'المشهد وسيلة إيضاح للمعنى وليس تفسيرًا. المرجع هو التفسير أدناه وأهل العلم.')),
-    h('div', { class: 'col-text' }, h('div', { class: 'titlerow' }, h('h2', {}, title), favId ? favButton(favId) : null), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, translationBlock(A), tafsirBlock(A), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
+    h('div', { class: 'col-text' }, h('div', { class: 'titlerow' }, h('h2', {}, title), favId ? favButton(favId) : null), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, translationBlock(A), tafsirBlock(A), myShotsBlock(scene, myKey, cine || title), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
 }
 
 // يسجّل المشهد كاملًا فيديو WebM مع الشروح مرسومة عليه، ثم ينزّله.
-async function recordVideo(p, scene, title, btn, rc, status) {
+// يسجّل المشهد فيديو احترافيًا (1080p): بطاقة افتتاح بالآية، ثم المشهد بترجمة سينمائية، ثم بطاقة ختام؛
+// والصوت تلاوة القارئ ممزوجة بأصوات الطبيعة (تُخفَّض تحت التلاوة).
+async function recordVideo(p, scene, title, btn, rc, status, meta = {}) {
   if (btn.disabled) return;
-  const W = 1280, H = 720, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const W = 1920, H = 1080, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d'), stream = cv.captureStream(30);
-  // صوت التلاوة في الفيديو: يُجلب ويُفكّ، ثم يُدمج مع الصورة. إن رفض الخادم ذلك يُسجَّل الفيديو صامتًا.
-  let total = scene.duration, actx = null, src = null;
+  const INTRO = 4, OUTRO = 3.5;
+  const actx = new AudioContext(), mix = actx.createMediaStreamDestination();
+  let total = scene.duration, src = null;
   if (rc) {
     btn.disabled = true; btn.textContent = 'تحضير التلاوة…';
-    try {
-      actx = new AudioContext(); const buf = await rc.decode(actx);
-      src = actx.createBufferSource(); src.buffer = buf; const dest = actx.createMediaStreamDestination(); src.connect(dest);
-      stream.addTrack(dest.stream.getAudioTracks()[0]); total = buf.duration;
-    } catch { actx?.close(); actx = null; src = null; if (status) status.textContent = 'تعذّر إدخال التلاوة في الفيديو من هذا الخادم، فسُجّل الفيديو دون صوت.'; }
+    try { const buf = await rc.decode(actx); src = actx.createBufferSource(); src.buffer = buf; src.connect(mix); total = buf.duration; }
+    catch { src = null; if (status) status.textContent = 'تعذّر إدخال التلاوة في الفيديو من هذا الخادم، فسُجّلت أصوات الطبيعة وحدها.'; }
     btn.disabled = false;
   }
-  const withAudio = !!src;
-  const type = (withAudio ? ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'] : ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']).find((t) => MediaRecorder.isTypeSupported(t));
-  if (!type) { btn.textContent = 'التسجيل غير مدعوم'; return; }
-  const mr = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6e6 }), chunks = [];
+  const sfx = sfxOn() ? new Sfx() : null;
+  if (sfx) { sfx.start(actx, mix); sfx.duck(!!src); }
+  if (src || sfx) stream.addTrack(mix.stream.getAudioTracks()[0]);
+  const type = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find((t) => MediaRecorder.isTypeSupported(t));
+  if (!type) { btn.textContent = 'التسجيل غير مدعوم'; actx.close(); return; }
+  const mr = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 10e6 }), chunks = [];
   mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const label = btn.textContent; btn.disabled = true; p.pause();
   const done = new Promise((r) => (mr.onstop = r));
-  mr.start(500); src?.start();
-  const t0 = performance.now();
+  await document.fonts?.ready;
+  const render = p.render && p.recordable !== false ? p.render : drawScene;
+  const GOLD = '#e0bd62', full = INTRO + total + OUTRO;
+  const card = (alpha, lines) => {
+    ctx.fillStyle = '#05080a'; ctx.fillRect(0, 0, W, H);
+    const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.6); g.addColorStop(0, 'rgba(224,189,98,.12)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = alpha; ctx.textAlign = 'center'; ctx.direction = 'rtl';
+    for (const [text, font, color, y] of lines) { ctx.font = font; ctx.fillStyle = color; ctx.fillText(text, W / 2, y, W - 240); }
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(W / 2 - 160, H / 2 + 6); ctx.lineTo(W / 2 + 160, H / 2 + 6); ctx.stroke();
+    ctx.globalAlpha = 1;
+  };
+  const fade = (x, a, b) => Math.max(0, Math.min(1, Math.min((x - a) / 0.8, (b - x) / 0.8)));
+  const verse = (meta.verse || '').split(' ').slice(0, 14).join(' ') + ((meta.verse || '').split(' ').length > 14 ? ' …' : '');
+  mr.start(500);
+  const t0 = performance.now(); let started = false;
   await new Promise((resolve) => {
     const frame = () => {
-      const el = Math.min(total, (performance.now() - t0) / 1000), t = (el / total) * scene.duration;
-      (p.render && p.recordable !== false ? p.render : drawScene)(ctx, W, H, scene, t);
-      let c = null; for (const x of scene.captions) if (x.t <= t) c = x;
-      if (c) {
-        const g = ctx.createLinearGradient(0, H - 150, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.75)');
-        ctx.fillStyle = g; ctx.fillRect(0, H - 150, W, 150);
-        ctx.font = '700 34px Tajawal, sans-serif'; ctx.textAlign = 'center'; ctx.direction = 'rtl'; ctx.fillStyle = '#fff';
-        ctx.fillText(c.text, W / 2, H - 46, W - 80);
+      const el = (performance.now() - t0) / 1000;
+      if (el < INTRO) {
+        card(fade(el, 0, INTRO), [[meta.ref || title, '700 64px Tajawal, sans-serif', GOLD, H / 2 - 40], [verse, '400 54px "Amiri Quran", Amiri, serif', '#f5eedb', H / 2 + 110], ['مَشهَدآية', '700 30px Tajawal, sans-serif', 'rgba(255,255,255,.55)', H - 90]]);
+      } else if (el < INTRO + total) {
+        if (!started) { started = true; src?.start(); }
+        const st = el - INTRO, t = (st / total) * scene.duration;
+        render(ctx, W, H, scene, t); sfx?.update(scene, t);
+        let c = null; for (const x of scene.captions) if (x.t <= t) c = x;
+        if (c) {
+          const g = ctx.createLinearGradient(0, H - 260, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.82)');
+          ctx.fillStyle = g; ctx.fillRect(0, H - 260, W, 260);
+          ctx.font = '700 50px Tajawal, sans-serif'; ctx.textAlign = 'center'; ctx.direction = 'rtl';
+          ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 14; ctx.fillStyle = '#fff'; ctx.fillText(c.text, W / 2, render === drawScene ? H - 92 : H - 46, W - 200); ctx.shadowBlur = 0; // في السينمائي داخل الشريط الأسود
+        }
+        ctx.font = '700 30px Tajawal, sans-serif'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillText('مَشهَدآية', W - 44, 62);
+        const edge = Math.min(st, total - st); if (edge < 0.7) { ctx.fillStyle = `rgba(0,0,0,${1 - edge / 0.7})`; ctx.fillRect(0, 0, W, H); } // إظلام عند الدخول والخروج
+      } else {
+        sfx?.stop();
+        const x = el - INTRO - total;
+        card(fade(x, 0, OUTRO), [['مَشهَدآية', '700 72px Tajawal, sans-serif', GOLD, H / 2 - 40], [meta.reciter ? `بصوت القارئ ${meta.reciter}` : 'افهم الآية بالنظر', '500 40px Tajawal, sans-serif', '#f5eedb', H / 2 + 90], ['التفسير الميسّر · مجمع الملك فهد · المشهد وسيلة إيضاح وليس تفسيرًا', '400 28px Tajawal, sans-serif', 'rgba(255,255,255,.6)', H - 110]]);
       }
-      ctx.font = '700 22px Tajawal, sans-serif'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillText('مَشهَدآية', W - 28, 42);
-      btn.textContent = `يسجّل… ${AR(Math.round((t / scene.duration) * 100))}٪`;
-      el < total ? requestAnimationFrame(frame) : resolve();
+      btn.textContent = `يسجّل… ${AR(Math.round(Math.min(1, el / full) * 100))}٪`;
+      el < full ? requestAnimationFrame(frame) : resolve();
     };
     frame();
   });
-  mr.stop(); await done; actx?.close();
+  mr.stop(); await done; sfx?.close(); if (actx.state !== 'closed') actx.close();
   const blob = new Blob(chunks, { type }), a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = `${title.replace(/[\\/:*?"<>|]/g, '')}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);

@@ -183,3 +183,9 @@ input:not([type=range]), select { background: var(--raise); border: 1px solid va
 .cine-status { color: var(--gold); }
 
 .sub-h { margin: 18px 0 8px; font-size: .98rem; color: var(--gold); }
+
+.myshots summary { cursor: pointer; }
+.myshots summary small { color: var(--muted); font-weight: 500; }
+.myshots .howto { margin: 12px 0; padding-inline-start: 1.3em; color: #c9d5d2; font-size: .93rem; display: grid; gap: 4px; }
+.filebtn { position: relative; overflow: hidden; display: inline-block; cursor: pointer; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }

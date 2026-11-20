@@ -9,14 +9,14 @@ import { drawScene } from './engine/render.js';
 const API = 'https://image.pollinations.ai/prompt/';
 export const STYLES = {
   real: { name: 'سينمائي واقعي', suffix: 'cinematic film still, photorealistic, 35mm film, dramatic natural lighting, highly detailed, emotional, shallow depth of field' },
-  anime: { name: 'سينمائي أنمي', suffix: 'anime feature film still, beautiful hand-drawn anime, cinematic composition, detailed painted background, expressive faces, soft light' },
+  anime: { name: 'سينمائي أنمي', suffix: 'anime feature film still, high quality 2D hand-drawn anime, cinematic composition, dramatic volumetric lighting, detailed painted background, expressive detailed faces, historical Arabian setting, film grain' },
 };
 // قيود ثابتة في كل وصف: لا ملائكة ولا أجنحة على بشر ولا هالات ولا شخصيات دينية، ولباس محتشم
 export const SAFE = 'no text, no wings on people, no angels, no halos, no religious figures, no prophets, ordinary humans only, modest traditional Arab clothing with long sleeves, women wearing hijab';
 const OVERLAY = ['rain', 'hail', 'lightning'];
 
 const SKY = { night: 'at night under a starry sky', dawn: 'at sunrise, golden hour', day: 'in bright daylight, blue sky', dusk: 'at sunset, warm dusk light', storm: 'under a dark stormy sky', deep: 'in the deep dark ocean' };
-const LOOK = { king: 'an arrogant ancient king with a golden crown and red robe', elder: 'an elderly Arab man with a white beard leaning on a cane', grandma: 'an elderly woman in hijab leaning on a cane', man: 'an Arab man in a white thobe and shemagh', woman: 'a woman in hijab and abaya', girl: 'a young girl in hijab', boy: 'a young Arab boy', farmer: 'a farmer in simple work clothes and a straw hat' };
+const LOOK = { king: 'an arrogant ancient king with a golden crown, black beard and red robe', elder: 'an elderly Arab man with a long white beard, white turban and grey cloak, leaning on a wooden cane', grandma: 'an elderly woman in a lavender hijab and dark abaya, leaning on a cane', man: 'a 35-year-old Arab man with a short black beard, white thobe and white shemagh with black agal', woman: 'a young woman in a navy blue hijab and long abaya', girl: 'a 9-year-old girl in a light lilac hijab and pink dress', boy: 'a 10-year-old Arab boy with short black hair and a blue tunic', farmer: 'a 40-year-old Arab farmer with a black beard, wide straw hat and brown work tunic' };
 const MOOD = { happy: 'joyful and smiling', sad: 'sad with tears in his eyes', afraid: 'terrified, trembling', surprised: 'shocked, mouth open in disbelief', angry: 'angry, frowning', calm: 'calm' };
 const POSE = { read: 'reading a book attentively', eat: 'eating dates and bread', proud: 'walking arrogantly with chin raised', sleep: 'sleeping peacefully', pray: 'standing in prayer', give: 'giving food to someone in need', receive: 'receiving food gratefully', help: 'gently helping an elderly person', invite: 'kindly inviting others with an open hand', lookup: 'looking up at the sky in wonder', walk: 'walking', sow: 'sowing seeds by hand', cheer: 'raising both hands with joy', thirsty: 'exhausted and thirsty, dragging his feet', stand: '' };
 
@@ -77,7 +77,11 @@ export function shotList(scene, style = 'real', key = '') {
   return times.map((t, i) => {
     // لا شخص في اللقطة: يُطلب صراحةً ألّا يظهر أحد (المولّد يضيف أشخاصًا من عنده أحيانًا)
     const people = scene.elements.some((e) => e.type === 'person' && live(e, t + 0.8));
-    const prompt = `${STYLES[style].suffix}, ${describe(scene, t + 0.8)}${people ? '' : ', empty landscape, nobody'}. ${SAFE}${people ? '' : ', no people, no humans, no human figures'}`;
+    // لغة إخراجية: انفعال واضح → لقطة قريبة على الوجه؛ أول لقطة عامة تأسيسية؛ ثم تنويع الزوايا
+    const emo = scene.elements.some((e) => e.type === 'person' && live(e, t + 0.8) && ((e.moodAt != null && t + 0.8 >= e.moodAt ? e.mood2 : e.mood) || 'calm') !== 'calm');
+    const frame = !people ? (i === 0 ? 'epic wide establishing shot' : ['wide shot', 'low-angle wide shot', 'aerial view'][i % 3])
+      : emo ? 'cinematic close-up on the face showing strong emotion' : i === 0 ? 'wide establishing shot' : ['medium shot', 'over-the-shoulder shot', 'low-angle medium shot'][i % 3];
+    const prompt = `${STYLES[style].suffix}, ${frame}, ${describe(scene, t + 0.8)}${people ? '' : ', empty landscape, nobody'}. ${SAFE}${people ? '' : ', no people, no humans, no human figures'}`;
     return { t, prompt, seed: hash(key + ':' + i + ':' + style), end: times[i + 1] ?? scene.duration };
   });
 }
@@ -114,7 +118,7 @@ export class Cinema {
     this.scene = scene; this.ready = 0;
     if (bundled?.length) { // لقطات مولَّدة مسبقًا ومراجَعة، مضمَّنة في التطبيق: فورية ودون إنترنت وتدخل في الفيديو
       this.local = true; this.recordable = true;
-      this.shots = bundled.map((b, i, arr) => ({ t: b.t, src: './cine/' + b.file, end: arr[i + 1]?.t ?? scene.duration }));
+      this.shots = bundled.map((b, i, arr) => ({ t: b.t, src: b.src || './cine/' + b.file, end: arr[i + 1]?.t ?? scene.duration }));
     } else { this.local = false; this.recordable = false; this.shots = shotList(scene, style, key); }
   }
   /** المضمَّنة تُحمَّل معًا؛ المولَّدة مباشرة تُطلب واحدة كل ٤٦ ثانية (حدّ الخدمة المجانية). */
