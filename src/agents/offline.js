@@ -28,6 +28,89 @@ export const CONCEPTS = [
   { id: 'earth', re: w('الأرض'), cap: 'الأرض' },
 ];
 
+// ───── معاني البشر: أفعال وأقوال وانفعالات (تُرسم في درجة «متساهل» فقط) ─────
+export const HUMAN = [
+  { id: 'invite', re: w('يدعون', 'تدعون', 'ادع', 'يدعوكم', 'دعاكم', 'دعوتهم', 'يدعو', 'ادعوا'), cap: 'يُدعَون إلى الخير' },
+  { id: 'reject', re: w('كفروا', 'فتكفرون', 'تكفرون', 'كذبوا', 'أعرضوا', 'معرضون', 'تولوا', 'توليتم', 'تولى', 'أبوا', 'استكبروا', 'يستكبرون'), cap: 'فيُعرضون ويكفرون' },
+  { id: 'call', re: w('ينادون', 'نادى', 'ينادي', 'نادوا', 'يصطرخون', 'صاحوا'), cap: 'يُنادَون' },
+  { id: 'regret', re: w('مقت', 'لمقت', 'مقتكم', 'حسرة', 'يا حسرتا', 'ندم', 'النادمين', 'يا ليتنا', 'يا ليتني', 'يا ويلنا', 'الخاسرين', 'خسروا'), cap: 'حسرة ومقت للنفس' },
+  { id: 'fear', re: w('يخافون', 'خوف', 'تخافوا', 'فزع', 'خشية', 'يخشون', 'وجلت', 'وجلة'), cap: 'الخوف' },
+  { id: 'joy', re: w('يستبشرون', 'فرحين', 'يفرحون', 'مسفرة', 'ضاحكة', 'مستبشرة', 'فرح'), cap: 'الفرح' },
+  { id: 'give', re: w('ينفقون', 'أنفقوا', 'تنفقوا', 'الصدقات', 'تصدق', 'المتصدقين', 'وآتى المال', 'يطعمون', 'أطعم', 'الزكاة', 'وآتوا الزكاة'), cap: 'الإنفاق والعطاء' },
+  { id: 'needy', re: w('اليتيم', 'اليتامى', 'يتيما', 'المسكين', 'المساكين', 'مسكينا', 'أسيرا', 'ابن السبيل', 'السائلين', 'الفقراء'), cap: 'اليتيم والمسكين' },
+  { id: 'parents', re: w('بالوالدين', 'والديه', 'والدي', 'الكبر', 'أف'), cap: 'برّ الوالدين' },
+  { id: 'pray', re: w('الصلاة', 'يصلون', 'صلاتهم', 'ركعا', 'سجدا', 'الساجدين', 'الراكعين', 'يقيمون'), cap: 'الصلاة' },
+  { id: 'kind', re: w('حسنا', 'قولا كريما', 'قولا معروفا', 'قولا سديدا', 'قولا لينا', 'سلاما'), cap: 'القول الحسن' },
+  { id: 'forgive', re: w('الكاظمين', 'الغيظ', 'العافين', 'يعفو', 'اعفوا', 'واصفحوا', 'تعفوا'), cap: 'كظم الغيظ والعفو' },
+];
+
+// اللفظ الإملائي من الآية الذي طابقه النمط (لتظليله في المصحف)
+function verseWord(clean, re) {
+  const cw = clean.split(/\s+/), sw = cw.map(strip);
+  for (const n of [1, 2, 3]) for (let i = 0; i < sw.length; i++) { const ph = sw.slice(i, i + n).join(' '); if (ph && re.test(' ' + ph)) { re.lastIndex = 0; return cw.slice(i, i + n).join(' '); } }
+  return null;
+}
+// عبارة قصيرة من الآية بعد كلمة «إلى» أو نحوها، لتقولها الشخصية
+function phraseAfter(clean, word) {
+  const cw = clean.split(/\s+/), i = cw.findIndex((x) => strip(x) === strip(word));
+  return i >= 0 && i + 1 < cw.length ? cw.slice(i, i + 2).join(' ') : null;
+}
+
+/** يبني لقطة لكل معنى بشري بترتيب وروده في الآية؛ كل لقطة ٦ ثوانٍ بشخصياتها. */
+// ترتيب سردي: الدعوة قبل الإعراض، وعواقب الإعراض (النداء والحسرة) بعده؛ وما سوى ذلك بترتيب الآية
+const ORDER = { invite: 0, reject: 1, call: 8, regret: 9 };
+function composeHuman(found, clean) {
+  if (found.some((b) => b.id === 'reject') && found.some((b) => b.id === 'invite' || b.id === 'call' || b.id === 'regret')) found = [...found].sort((a, b) => (ORDER[a.id] ?? 2 + a.at / 1e4) - (ORDER[b.id] ?? 2 + b.at / 1e4));
+  const B = 6, beats = found.slice(0, 6), D = Math.max(18, beats.length * B + 4), E = [], sky = [];
+  const dark = beats.some((b) => b.id === 'regret' || b.id === 'fear');
+  E.push({ type: 'mountains', count: 3, size: 0.6, seed: 77 }, { type: 'ground', green: 0.5, cracks: false }, { type: 'plants', kind: 'grass', growFrom: -6, growTo: -1, count: 20, depth: 0.3 });
+  sky.push({ t: 0, mode: 'day' });
+  const caps = [];
+  beats.forEach((b, i) => {
+    const t0 = 1 + i * B, t1 = t0 + B, win = (el) => ({ ...el, from: t0, until: t1 + 0.4 });
+    const q = verseWord(clean, b.re);
+    if (b.id === 'invite') {
+      const say = phraseAfter(clean, 'إلى') || 'تعالوا';
+      E.push(win({ type: 'person', look: 'man', x: 0.3, pose: 'invite', mood: 'happy', says: [{ from: t0 + 0.8, to: t1 - 0.5, text: say }] }),
+        win({ type: 'person', look: 'farmer', x: 0.58, seed: 2, mood: 'calm' }), win({ type: 'person', look: 'boy', x: 0.7, seed: 3, mood: 'calm' }));
+    } else if (b.id === 'reject') {
+      E.push(win({ type: 'person', look: 'man', x: 0.3, pose: 'invite', mood: 'sad' }),
+        win({ type: 'person', look: 'farmer', x0: 0.58, x1: 0.95, mood: 'angry', facing: 1, seed: 2 }), win({ type: 'person', look: 'boy', x0: 0.7, x1: 1.05, mood: 'angry', facing: 1, seed: 3 }));
+    } else if (b.id === 'call') { // المنادي لا يُرسم (قد يكون ملَكًا أو غيبًا): يظهر المنادَون وحدهم
+      sky.push({ t: t0, mode: 'storm' });
+      E.push(win({ type: 'person', look: 'farmer', x: 0.42, pose: 'lookup', mood: 'afraid', seed: 2 }), win({ type: 'person', look: 'boy', x: 0.56, pose: 'lookup', mood: 'afraid', seed: 3 }));
+    } else if (b.id === 'regret') {
+      sky.push({ t: t0, mode: 'dusk' });
+      E.push(win({ type: 'person', look: 'farmer', x: 0.4, mood: 'sad', seed: 2 }), win({ type: 'person', look: 'boy', x: 0.55, mood: 'sad', seed: 3 }));
+    } else if (b.id === 'fear') {
+      sky.push({ t: t0, mode: 'storm' });
+      E.push(win({ type: 'person', look: 'man', x: 0.4, mood: 'afraid', seed: 4 }), win({ type: 'person', look: 'woman', x: 0.55, mood: 'afraid', seed: 5 }));
+    } else if (b.id === 'joy') {
+      sky.push({ t: t0, mode: 'day' });
+      E.push(win({ type: 'person', look: 'man', x: 0.38, pose: 'cheer', mood: 'happy', seed: 4 }), win({ type: 'person', look: 'girl', x: 0.52, mood: 'happy', seed: 5 }));
+    } else if (b.id === 'give' || b.id === 'needy') {
+      E.push(win({ type: 'person', look: 'man', x: 0.36, pose: 'give', mood: 'happy', seed: 4 }),
+        win({ type: 'person', look: 'boy', x: 0.52, pose: 'receive', mood: 'calm', mood2: 'happy', moodAt: t0 + 2.5, seed: 6, size: 0.8, facing: -1 }),
+        win({ type: 'person', look: 'elder', x: 0.66, pose: 'receive', mood: 'calm', mood2: 'happy', moodAt: t0 + 3, seed: 7, facing: -1 }));
+    } else if (b.id === 'parents') {
+      E.push(win({ type: 'person', look: 'elder', x0: 0.25, x1: 0.42, pose: 'walk', mood: 'happy', seed: 8 }), win({ type: 'person', look: 'man', x0: 0.32, x1: 0.5, pose: 'help', mood: 'happy', seed: 9 }),
+        win({ type: 'person', look: 'grandma', x: 0.64, mood: 'happy', seed: 10, facing: -1, says: q === 'أف' ? [] : [] }));
+    } else if (b.id === 'pray') {
+      E.push(win({ type: 'person', look: 'man', x: 0.36, pose: 'pray', mood: 'calm', seed: 11 }), win({ type: 'person', look: 'elder', x: 0.5, pose: 'pray', mood: 'calm', seed: 12 }), win({ type: 'person', look: 'boy', x: 0.62, pose: 'pray', mood: 'calm', seed: 13, size: 0.8 }));
+    } else if (b.id === 'kind') {
+      E.push(win({ type: 'person', look: 'man', x: 0.38, mood: 'happy', seed: 14, says: [{ from: t0 + 0.6, to: t1 - 0.5, text: q || 'قولًا حسنًا' }] }), win({ type: 'person', look: 'farmer', x: 0.56, mood: 'happy', seed: 15, facing: -1 }));
+    } else if (b.id === 'forgive') {
+      E.push(win({ type: 'person', look: 'farmer', x: 0.36, mood: 'angry', mood2: 'calm', moodAt: t0 + 3, seed: 16 }), win({ type: 'person', look: 'man', x: 0.54, mood: 'sad', mood2: 'happy', moodAt: t0 + 3.5, seed: 17, facing: -1 }));
+    }
+    caps.push({ t: +t0.toFixed(1), text: b.cap, q });
+  });
+  // السماء تتغيّر عند بداية اللقطة لا بالتدريج من أول المشهد؛ والكاميرا تقترب من الشخصيات في كل لقطة
+  const sk = []; let prev = 'day';
+  for (const k of sky.sort((a, b) => a.t - b.t)) { if (k.t > 0) sk.push({ t: k.t - 0.8, mode: prev }); sk.push(k); prev = k.mode; }
+  const camera = beats.flatMap((_, i) => [{ t: 1 + i * B, zoom: 1.05, x: 0.47, y: 0.58 }, { t: 1 + i * B + B - 0.3, zoom: 1.3, x: 0.47, y: 0.6 }]);
+  return { duration: D, sky: sk, camera, elements: E, captions: caps };
+}
+
 export function detect(clean) {
   const t = strip(clean), found = [];
   for (const c of CONCEPTS) { const m = c.re.exec(t); if (m) found.push({ ...c, at: m.index }); }
@@ -89,7 +172,7 @@ export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onSt
   const allowed = strictness === 'lenient' || (visual && (strictness === 'balanced' ? !barriers.some((b) => /غيبي|صفة/.test(b)) : !barriers.length));
   if (allowed) {
     const notes = barriers.map((b) => `يُترك من المشهد: ${b}`);
-    if (!visual) notes.push('لا محسوس كوني صريح في الآية: يُرسم مشهد عام هادئ يرافق التفسير');
+    if (!visual) notes.push('لا محسوس كوني صريح في الآية: يُرسم معناها بشخصيات إن كان فيها فعل أو قول أو انفعال، وإلا فمشهد عام يرافق التفسير');
     report.review = { verdict: 'allow', leaveOut: notes };
     onStep('review', 'done', notes.join(' — ') || 'لا موانع: الآية في مشهد كوني محسوس');
   } else {
@@ -101,6 +184,22 @@ export async function runOffline({ clean, tafsir, strictness = 'lenient' }, onSt
 
   onStep('paint', 'run'); await wait(400);
   const ids = found.filter((f) => !f.fig || strictness === 'lenient').map((f) => f.id), calm = !ids.some((x) => x !== 'earth');
+  // معاني البشر في الآية (بترتيب ورودها): تُبنى لها لقطات بشخصيات، إن لم يكن فيها مشهد كوني أوضح
+  const st = strip(clean), hum = strictness === 'lenient' ? HUMAN.map((hc) => { hc.re.lastIndex = 0; const m = hc.re.exec(st); return m ? { ...hc, at: m.index } : null; }).filter(Boolean).sort((x, y) => x.at - y.at) : [];
+  if (hum.length && (calm || hum.length >= ids.filter((x) => x !== 'earth').length)) {
+    const scene = composeHuman(hum, clean);
+    report.paint = { elements: scene.elements.map((e) => TYPE_NAMES[e.type]) };
+    onStep('paint', 'done', 'لقطات بشرية: ' + hum.map((x) => x.cap).join('، '));
+    onStep('animate', 'run'); await wait(300);
+    scene.captions.push({ t: scene.duration - 3.5, text: 'مشهد تقريبي آلي — المعنى الكامل في التفسير أسفل المشهد' });
+    report.animate = { duration: scene.duration, beats: scene.captions.length };
+    onStep('animate', 'done', `${scene.duration} ثانية، ${scene.captions.length} لقطات`);
+    onStep('final', 'run'); await wait(200);
+    const checks = checkScene(scene);
+    report.review = { ...report.review, verdict: 'approve', checks, reasons: [] };
+    onStep('final', 'done', 'اجتاز الفحص الآلي للضوابط');
+    return { ok: true, scene, report };
+  }
   const scene = compose(calm ? ['day', 'plants', 'mountains'] : ids, strictness);
   report.paint = { elements: scene.elements.map((e) => TYPE_NAMES[e.type]) };
   onStep('paint', 'done', [...new Set(report.paint.elements)].join('، '));

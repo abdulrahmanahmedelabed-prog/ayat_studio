@@ -16,6 +16,8 @@ const LOOKS = {
   man: { skin: '#d9a77f', hair: '#1f1612', top: '#efe9dc', bottom: '#d9cfbb', head: 'shemagh', scarf: '#e8e2d6', band: '#2a2a2a', beard: true },
   woman: { skin: '#e8b892', hair: '#1f1612', top: '#4b6c8f', bottom: '#2f455d', head: 'scarf', scarf: '#2f4f6a' },
   farmer: { skin: '#c99068', hair: '#2b1d16', top: '#8a6a3a', bottom: '#5b4526', head: 'hat', hat: '#d8b45c' },
+  elder: { skin: '#d9a77f', hair: '#cfcfcf', top: '#7a6a58', bottom: '#5c4f42', head: 'shemagh', scarf: '#f2efe8', band: '#2a2a2a', beard: true, cane: true },
+  grandma: { skin: '#e8b892', hair: '#cfcfcf', top: '#5b4a6b', bottom: '#3f344c', head: 'scarf', scarf: '#ece8f2', cane: true },
 };
 
 // el: { x, x0, x1 (مشي), look, pose: stand|walk|lookup|cheer|sow|thirsty, size, facing }
@@ -40,6 +42,7 @@ export function person(c, e, el, k, a) {
   if (mood === 'sad') c.translate(0, H * 0.015);
   if (mood === 'angry') c.rotate(0.05);
   const hipY = -H * 0.36, legL = H * 0.34;
+  if (L.cane) { c.strokeStyle = dim(e, '#6b4a2e'); c.lineWidth = H * 0.03; c.beginPath(); c.moveTo(-H * 0.2, 0); c.lineTo(-H * 0.17, -H * 0.42); c.stroke(); c.translate(0, H * 0.02); c.rotate(0.06); }
   // الساقان
   c.lineCap = 'round'; c.lineWidth = H * 0.075; c.strokeStyle = dim(e, L.bottom);
   for (const s of [-1, 1]) { const an = sw * 0.42 * s; c.beginPath(); c.moveTo(s * H * 0.045, hipY); c.lineTo(s * H * 0.045 + Math.sin(an) * legL, hipY + Math.cos(an) * legL); c.stroke(); }
@@ -64,6 +67,10 @@ export function person(c, e, el, k, a) {
   else if (pose === 'sow') { arm(-1, 0.3, 0.6); const th = (Math.sin(e.t * 3) + 1) / 2; hand = arm(1, lerp(0.4, 1.8, th), -0.2);
     if (th > 0.8) { c.fillStyle = dim(e, '#e3c064'); for (let i = 0; i < 5; i++) circle(c, hand[0] + i * H * 0.05, hand[1] + i * i * H * 0.012, H * 0.012); } }
   else if (pose === 'thirsty') { arm(-1, 0.15 + sw * 0.2); arm(1, 1.9, 0.4); }
+  else if (pose === 'pray') { arm(-1, 1.2, 1.9); arm(1, 1.2, 1.9); }
+  else if (pose === 'give' || pose === 'receive') { arm(-1, 0.2); hand = arm(1, 1.45, pose === 'give' ? 0.1 : -0.3); if (pose === 'give') { c.fillStyle = dim(e, '#d8a24a'); ell(c, hand[0] + H * 0.03, hand[1] - H * 0.02, H * 0.045, H * 0.03); } }
+  else if (pose === 'help') { arm(-1, 1.3, 0.3); arm(1, 1.1, 0.5); }
+  else if (pose === 'invite') { arm(-1, 0.2); arm(1, 1.9 + Math.sin(e.t * 3) * 0.15, -0.6); }
   else if (mood === 'afraid') { arm(-1, 2.25, -1.5); arm(1, 2.25, -1.5); }
   else if (mood === 'surprised') { arm(-1, 1.75, -0.5); arm(1, 1.75, -0.5); }
   else if (mood === 'angry') { arm(-1, 0.55, 1.1); arm(1, 0.55, 1.1); }

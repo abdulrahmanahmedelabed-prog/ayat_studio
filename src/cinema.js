@@ -16,9 +16,9 @@ export const SAFE = 'no text, no wings on people, no angels, no halos, no religi
 const OVERLAY = ['rain', 'hail', 'lightning'];
 
 const SKY = { night: 'at night under a starry sky', dawn: 'at sunrise, golden hour', day: 'in bright daylight, blue sky', dusk: 'at sunset, warm dusk light', storm: 'under a dark stormy sky', deep: 'in the deep dark ocean' };
-const LOOK = { man: 'an Arab man in a white thobe and shemagh', woman: 'a woman in hijab and abaya', girl: 'a young girl in hijab', boy: 'a young Arab boy', farmer: 'a farmer in simple work clothes and a straw hat' };
+const LOOK = { elder: 'an elderly Arab man with a white beard leaning on a cane', grandma: 'an elderly woman in hijab leaning on a cane', man: 'an Arab man in a white thobe and shemagh', woman: 'a woman in hijab and abaya', girl: 'a young girl in hijab', boy: 'a young Arab boy', farmer: 'a farmer in simple work clothes and a straw hat' };
 const MOOD = { happy: 'joyful and smiling', sad: 'sad with tears in his eyes', afraid: 'terrified, trembling', surprised: 'shocked, mouth open in disbelief', angry: 'angry, frowning', calm: 'calm' };
-const POSE = { lookup: 'looking up at the sky in wonder', walk: 'walking', sow: 'sowing seeds by hand', cheer: 'raising both hands with joy', thirsty: 'exhausted and thirsty, dragging his feet', stand: '' };
+const POSE = { pray: 'standing in prayer', give: 'giving food to someone in need', receive: 'receiving food gratefully', help: 'gently helping an elderly person', invite: 'kindly inviting others with an open hand', lookup: 'looking up at the sky in wonder', walk: 'walking', sow: 'sowing seeds by hand', cheer: 'raising both hands with joy', thirsty: 'exhausted and thirsty, dragging his feet', stand: '' };
 
 const live = (el, t) => (el.from ?? 0) <= t + 0.6 && (el.until == null || el.until > t) && (el.growFrom == null || el.growFrom <= t + 1);
 
