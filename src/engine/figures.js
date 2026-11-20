@@ -82,6 +82,12 @@ export function person(c, e, el, k, a) {
   else if (pose === 'read') { arm(-1, 0.35, -1.5); hand = arm(1, 0.35, -1.5); c.fillStyle = dim(e, '#f4ecd6'); c.fillRect(-H * 0.11, hand[1] - H * 0.09, H * 0.22, H * 0.12); c.strokeStyle = dim(e, '#8a6a3a'); c.lineWidth = H * 0.008; c.strokeRect(-H * 0.11, hand[1] - H * 0.09, H * 0.22, H * 0.12); c.beginPath(); c.moveTo(0, hand[1] - H * 0.09); c.lineTo(0, hand[1] + H * 0.03); c.stroke(); }
   else if (pose === 'eat') { arm(-1, 0.3); const up = (Math.sin(e.t * 2.5 + (el.seed || 0)) + 1) / 2; hand = arm(1, lerp(1.2, 2.5, up), lerp(0.4, -0.9, up)); c.fillStyle = dim(e, '#c98a3a'); ell(c, hand[0], hand[1], H * 0.035, H * 0.025); }
   else if (pose === 'proud') { arm(-1, 0.6, 1.5); arm(1, 0.6, 1.5); }
+  else if (pose === 'sword' || pose === 'spear') { // سلاح مرفوع، بلا إصابات
+    const sw2 = Math.sin(e.t * 4 + (el.seed || 0)); arm(-1, 0.5, 0.6); hand = arm(1, 2.3 + sw2 * 0.4, -0.3);
+    c.strokeStyle = dim(e, pose === 'sword' ? '#c9ced6' : '#7a5a36'); c.lineWidth = H * (pose === 'sword' ? 0.025 : 0.018); c.lineCap = 'round';
+    const L = H * (pose === 'sword' ? 0.32 : 0.6), an = -1.2 + sw2 * 0.4; c.beginPath(); c.moveTo(hand[0], hand[1]); c.lineTo(hand[0] + Math.cos(an) * L, hand[1] + Math.sin(an) * L); c.stroke();
+    if (pose === 'spear') { c.fillStyle = dim(e, '#c9ced6'); c.beginPath(); const tx = hand[0] + Math.cos(an) * L, ty = hand[1] + Math.sin(an) * L; c.moveTo(tx + Math.cos(an) * H * 0.06, ty + Math.sin(an) * H * 0.06); c.lineTo(tx + Math.cos(an + 1.6) * H * 0.02, ty + Math.sin(an + 1.6) * H * 0.02); c.lineTo(tx + Math.cos(an - 1.6) * H * 0.02, ty + Math.sin(an - 1.6) * H * 0.02); c.fill(); }
+    else { c.strokeStyle = dim(e, '#6b4a2e'); c.lineWidth = H * 0.02; c.beginPath(); c.moveTo(hand[0] + Math.cos(an + 1.57) * H * 0.04, hand[1] + Math.sin(an + 1.57) * H * 0.04); c.lineTo(hand[0] - Math.cos(an + 1.57) * H * 0.04, hand[1] - Math.sin(an + 1.57) * H * 0.04); c.stroke(); } }
   else if (mood === 'afraid') { arm(-1, 2.25, -1.5); arm(1, 2.25, -1.5); }
   else if (mood === 'surprised') { arm(-1, 1.75, -0.5); arm(1, 1.75, -0.5); }
   else if (mood === 'angry') { arm(-1, 0.55, 1.1); arm(1, 0.55, 1.1); }

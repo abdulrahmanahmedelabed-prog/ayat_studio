@@ -418,6 +418,7 @@ const DRAW = {
     c.fillStyle = lg; c.beginPath(); c.moveTo(lx - e.U * 0.05, y0); c.lineTo(lx + e.U * 0.05, y0); c.lineTo(lx + e.U * 0.2, y0 + L); c.lineTo(lx - e.U * 0.2, y0 + L); c.closePath(); c.fill();
   },
   label(c, e, el, k, a) {
+    if (typeof document !== 'undefined' && document.documentElement.dataset.labels === '0') return;
     const x = (el.x ?? 0.5) * e.W, y = (el.y ?? 0.5) * e.H, fs = Math.max(11, e.U * 0.034) * (el.size || 1);
     c.font = `700 ${fs}px Tajawal, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.direction = 'rtl';
     const w = c.measureText(el.text || '').width + fs * 1.2;

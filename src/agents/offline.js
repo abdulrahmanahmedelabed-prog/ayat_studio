@@ -99,6 +99,9 @@ function composeGhayb(kinds, tafsir) {
   return { duration: D, sky: sk.length ? sk : [{ t: 0, mode: 'day' }], camera: cam, elements: E, captions };
 }
 
+// شدة المشاهد من الإعدادات (هادئ / درامي / عنيف)؛ تُضبط من واجهة التطبيق
+export const INTENSITY = { value: 'dramatic' };
+
 // ───── معاني البشر: أفعال وأقوال وانفعالات (تُرسم في درجة «متساهل» فقط) ─────
 // معانٍ عامة جدًا: تُستعمل فقط إن لم يوجد في الآية ولا تفسيرها معنى أخص
 export const HUMAN_SECONDARY = [
@@ -213,9 +216,12 @@ function composeHuman(found, clean) {
       E.push(win({ type: 'stars' }), win({ type: 'moon', x: 0.8, y: 0.2, phase: 0.5 }), win({ type: 'house', x: 0.25, size: 1.1, to: t0 + 1 }), win({ type: 'person', look: 'man', x: 0.55, pose: 'sleep', mood: 'calm', seed: 83 }));
     } else if (b.id === 'truth') {
       E.push(win({ type: 'person', look: 'man', x: 0.36, mood: 'calm', seed: 84, says: [{ from: t0 + 0.6, to: t0 + 3, text: q || 'الصدق' }] }), win({ type: 'person', look: 'farmer', x: 0.58, mood: 'happy', mood2: 'calm', moodAt: t0 + 3, seed: 85, facing: -1 }));
-    } else if (b.id === 'fight') { // بلا سلاح ظاهر ولا دم: صفّان متقابلان
+    } else if (b.id === 'fight') { // صفّان متقابلان؛ في «عنيف» بالسيوف والرماح والتقدّم — بلا دم ولا إصابات
       sky.push({ t: t0, mode: 'storm' });
-      E.push(win({ type: 'wind', intensity: 1.2 }), ...[0.12, 0.2, 0.28].map((x, j) => win({ type: 'person', look: j ? 'man' : 'elder', x, mood: 'angry', seed: 86 + j })), ...[0.72, 0.8, 0.88].map((x, j) => win({ type: 'person', look: 'farmer', x, mood: 'angry', seed: 90 + j, facing: -1 })));
+      const hard = INTENSITY.value === 'intense', calmOnly = INTENSITY.value === 'calm';
+      E.push(win({ type: 'wind', intensity: hard ? 2 : 1.2 }), ...(hard ? [win({ type: 'quake', to: t0 + 4 }), win({ type: 'lightning' })] : []),
+        ...[0.12, 0.2, 0.28].map((x, j) => win({ type: 'person', look: j ? 'man' : 'elder', ...(hard ? { x0: x, x1: x + 0.12 } : { x }), pose: calmOnly ? 'stand' : j % 2 ? 'spear' : 'sword', mood: calmOnly ? 'calm' : 'angry', seed: 86 + j })),
+        ...[0.72, 0.8, 0.88].map((x, j) => win({ type: 'person', look: 'farmer', ...(hard ? { x0: x, x1: x - 0.12 } : { x }), pose: calmOnly ? 'stand' : j % 2 ? 'sword' : 'spear', mood: calmOnly ? 'calm' : hard ? 'afraid' : 'angry', seed: 90 + j, facing: -1 })));
     } else if (b.id === 'thank') {
       sky.push({ t: t0, mode: 'dawn' });
       E.push(win({ type: 'person', look: 'man', x: 0.4, pose: 'pray', mood: 'happy', seed: 94 }), win({ type: 'person', look: 'woman', x: 0.54, pose: 'pray', mood: 'happy', seed: 95 }));

@@ -658,3 +658,538 @@ for (const s of LIBRARY) (Q[s.id] || []).forEach((q, i) => { if (q && s.captions
 // لحظة الصورة المصغّرة لكل مشهد (نسبة من مدته) حين لا تصلح اللحظة الافتراضية
 const THUMB = { harvest: 0.42, 'two-signs': 0.6, 'dawn-split': 0.4, shams: 0.25, 'ashes-wind': 0.3, 'evil-tree': 0.3, mirage: 0.35, 'worldly-life': 0.42, 'spider-house': 0.3, shadow: 0.5, 'bare-rock': 0.2, 'springs-crop': 0.5, 'deep-darkness': 0.45 };
 for (const s of LIBRARY) if (THUMB[s.id]) s.thumb = THUMB[s.id];
+
+// أوصاف لقطات سينمائية مكتوبة يدويًا لمشاهد المكتبة (P = في اللقطة أشخاص)
+const SHOTS = {
+"two-seas": [
+{
+"t": 0,
+"prompt": "aerial view of a dark blue salty sea meeting a turquoise freshwater river mouth, the two waters side by side"
+},
+{
+"t": 4,
+"prompt": "aerial view where two bodies of water of different colors touch along a long line without mixing"
+},
+{
+"t": 10,
+"prompt": "close aerial view of a sharp natural boundary line between deep blue salt water and green-turquoise fresh water"
+},
+{
+"t": 14.5,
+"prompt": "wide aerial view of the two seas each keeping its own color on either side of the boundary, sunlight"
+}
+],
+"flood-foam": [
+{
+"t": 0,
+"prompt": "heavy rain pouring from dark clouds over rocky desert mountains"
+},
+{
+"t": 6,
+"prompt": "flash flood rushing down several valleys of different sizes, muddy water filling each channel"
+},
+{
+"t": 11,
+"prompt": "torrent of muddy floodwater carrying thick white foam and scum floating on its surface"
+},
+{
+"t": 16,
+"prompt": "the foam drying and scattering on the banks, the flood calming"
+},
+{
+"t": 20.5,
+"prompt": "clear calm water settled in the valley, green plants growing along its edges, fertile soil"
+}
+],
+"spider-house": [
+{
+"t": 0,
+"prompt": "macro shot of a delicate spider web between dry twigs at dusk, dew drops, no spider visible"
+},
+{
+"t": 5,
+"prompt": "extreme close-up of thin fragile silk threads of a web glowing in the light"
+},
+{
+"t": 9.5,
+"prompt": "a strong gust of wind tearing the spider web apart, threads flying"
+},
+{
+"t": 15,
+"prompt": "the torn remains of a spider web hanging limp on a twig in a storm"
+}
+],
+"worldly-life": [
+{
+"t": 0,
+"prompt": "rain falling on a dry plain"
+},
+{
+"t": 5.5,
+"prompt": "lush green meadow full of blooming flowers after rain, bright and vibrant"
+},
+{
+"t": 17,
+"prompt": "the same meadow dried out, yellow brittle broken stalks and withered flowers"
+},
+{
+"t": 21,
+"prompt": "strong wind scattering dry broken straw and chaff across the plain in all directions"
+},
+{
+"t": 25,
+"prompt": "empty dusty plain at sunset after the wind"
+}
+],
+"ashes-wind": [
+{
+"t": 0,
+"prompt": "a pile of grey ashes on bare ground at dusk"
+},
+{
+"t": 5,
+"prompt": "a violent storm wind blowing the ashes into the air, dark sky"
+},
+{
+"t": 11,
+"prompt": "empty bare ground where the ashes were, no trace left, stormy sky"
+}
+],
+"sun-moon": [
+{
+"t": 0,
+"prompt": "the sun shining brilliantly over mountains, rays of light, radiant"
+},
+{
+"t": 5,
+"prompt": "golden daylight over a valley, long day light"
+},
+{
+"t": 13,
+"prompt": "the full moon glowing softly over a dark landscape, gentle light"
+},
+{
+"t": 16,
+"prompt": "time-lapse composite of the moon phases from thin crescent to full moon across the night sky"
+},
+{
+"t": 20,
+"prompt": "a thin crescent moon above the horizon at dusk"
+}
+],
+"one-water": [
+{
+"t": 0,
+"prompt": "rain falling from clouds over green hills"
+},
+{
+"t": 3.5,
+"prompt": "a clear spring of fresh water flowing between trees and grassland"
+},
+{
+"t": 7.5,
+"prompt": "fields of wheat and barley growing"
+},
+{
+"t": 11,
+"prompt": "an olive tree heavy with green and black olives"
+},
+{
+"t": 14,
+"prompt": "tall date palm trees with clusters of dates"
+},
+{
+"t": 17,
+"prompt": "grapevines heavy with purple and green grape bunches"
+},
+{
+"t": 21.5,
+"prompt": "a basket-free still life of many different fruits growing on their trees in one orchard"
+}
+],
+"piled-clouds": [
+{
+"t": 0,
+"prompt": "scattered clouds driven by wind across the sky"
+},
+{
+"t": 5.5,
+"prompt": "clouds gathering and joining together"
+},
+{
+"t": 10.5,
+"prompt": "enormous towering cumulonimbus clouds piled up like mountains"
+},
+{
+"t": 15.5,
+"prompt": "rain falling from between the dark clouds"
+},
+{
+"t": 20,
+"prompt": "hailstones falling from huge mountain-like clouds"
+},
+{
+"t": 24.5,
+"prompt": "a blinding lightning flash inside the dark clouds"
+}
+],
+"winds-clouds": [
+{
+"t": 0,
+"prompt": "strong wind blowing dust and grass across a plain"
+},
+{
+"t": 4,
+"prompt": "wind stirring up and lifting clouds"
+},
+{
+"t": 8.5,
+"prompt": "clouds spreading across the whole sky"
+},
+{
+"t": 11.5,
+"prompt": "clouds broken into separate pieces"
+},
+{
+"t": 14.5,
+"prompt": "rain falling from between the clouds"
+},
+{
+"t": 20,
+"prompt": "an Arab farmer and a boy in modest clothes rejoicing in the rain with raised hands, smiling",
+"people": true
+}
+],
+"shadow": [
+{
+"t": 0,
+"prompt": "a long soft shadow of a lone tree stretching across the ground at dawn"
+},
+{
+"t": 6,
+"prompt": "the sun rising behind the tree, shadow long"
+},
+{
+"t": 11,
+"prompt": "the sun higher in the sky, the shadow becoming shorter"
+},
+{
+"t": 17,
+"prompt": "the sun high at noon, the tree shadow very short beneath it"
+}
+],
+"bare-rock": [
+{
+"t": 0,
+"prompt": "a large smooth rock covered with a thin layer of dust and soil"
+},
+{
+"t": 9.5,
+"prompt": "heavy rain pouring on the rock"
+},
+{
+"t": 13.5,
+"prompt": "rainwater washing the soil off the rock"
+},
+{
+"t": 18.5,
+"prompt": "the smooth bare clean rock glistening after rain, nothing left on it"
+}
+],
+"evil-tree": [
+{
+"t": 0,
+"prompt": "a bitter colocynth plant with yellow gourds on the dry sand, shallow roots"
+},
+{
+"t": 5.5,
+"prompt": "close-up of the shallow roots of the plant barely in the sand"
+},
+{
+"t": 11.5,
+"prompt": "the plant uprooted by the wind and tumbling across the desert"
+},
+{
+"t": 17.5,
+"prompt": "empty sand where the plant was, no trace"
+}
+],
+"two-lands": [
+{
+"t": 0,
+"prompt": "rain falling on two neighboring fields"
+},
+{
+"t": 8,
+"prompt": "fertile dark soil producing lush healthy green plants and flowers"
+},
+{
+"t": 15,
+"prompt": "salty white barren land beside it producing only a few weak sparse plants"
+}
+],
+"mirage": [
+{
+"t": 0,
+"prompt": "a vast flat desert plain at noon, harsh sun"
+},
+{
+"t": 3,
+"prompt": "a shimmering mirage on the desert that looks like a lake of water"
+},
+{
+"t": 8,
+"prompt": "an exhausted thirsty Arab traveler in a white thobe walking toward the mirage",
+"people": true
+},
+{
+"t": 13,
+"prompt": "the traveler arriving and finding only dry cracked sand, shocked",
+"people": true
+}
+],
+"springs-crop": [
+{
+"t": 0,
+"prompt": "rain falling over hills"
+},
+{
+"t": 6,
+"prompt": "water springing from the ground, a natural spring flowing into streams"
+},
+{
+"t": 11.5,
+"prompt": "green fields of various crops of different colors"
+},
+{
+"t": 19,
+"prompt": "the crops turning yellow and drying"
+},
+{
+"t": 24.5,
+"prompt": "the dried crops broken into crumbled chaff on the ground"
+}
+],
+"seed-split": [
+{
+"t": 0,
+"prompt": "macro cross-section of soil with a single seed buried in it"
+},
+{
+"t": 2.5,
+"prompt": "macro of a seed splitting open with a tiny green sprout emerging"
+},
+{
+"t": 11,
+"prompt": "macro of a date pit splitting and a small palm shoot emerging from the soil"
+}
+],
+"ships-still": [
+{
+"t": 0,
+"prompt": "huge wooden sailing ships like mountains sailing on the sea with full sails"
+},
+{
+"t": 11.5,
+"prompt": "the wind dying down, sails becoming slack"
+},
+{
+"t": 16,
+"prompt": "the ships motionless on a perfectly calm glassy sea"
+}
+],
+"food": [
+{
+"t": 2.5,
+"prompt": "heavy rain pouring onto soil"
+},
+{
+"t": 7,
+"prompt": "the soil cracking open as green shoots push through"
+},
+{
+"t": 11.5,
+"prompt": "ripe wheat grain heads"
+},
+{
+"t": 14.5,
+"prompt": "grapevines and green fodder plants"
+},
+{
+"t": 18,
+"prompt": "olive trees and date palms side by side"
+},
+{
+"t": 22.5,
+"prompt": "a dense garden of huge thick trees"
+},
+{
+"t": 26.5,
+"prompt": "fruits and pasture grass"
+},
+{
+"t": 30,
+"prompt": "sheep and cows grazing in the pasture"
+}
+],
+"adjacent-plots": [
+{
+"t": 0,
+"prompt": "neighboring plots of land side by side, some fertile green and some salty barren"
+},
+{
+"t": 5,
+"prompt": "vineyards with grape clusters"
+},
+{
+"t": 12.5,
+"prompt": "date palms growing in clusters from one root and others standing alone"
+},
+{
+"t": 17.5,
+"prompt": "one stream of water irrigating all the plots"
+},
+{
+"t": 22.5,
+"prompt": "many different fruits from the same garden: sweet and sour, of different sizes"
+}
+],
+"shams": [
+{
+"t": 0,
+"prompt": "the bright morning sun shining over a valley, forenoon light"
+},
+{
+"t": 9,
+"prompt": "the moon rising after the sun sets, following it"
+},
+{
+"t": 16,
+"prompt": "night covering the land in darkness, stars"
+},
+{
+"t": 22,
+"prompt": "dawn breaking, daylight revealing the land"
+}
+],
+"dawn-split": [
+{
+"t": 0,
+"prompt": "darkness of night over the desert, stars"
+},
+{
+"t": 4,
+"prompt": "the first light of dawn splitting the darkness on the horizon"
+},
+{
+"t": 14,
+"prompt": "a peaceful quiet night"
+},
+{
+"t": 18.5,
+"prompt": "the sun and the moon in the sky, precise orbits, time-lapse trails"
+}
+],
+"two-signs": [
+{
+"t": 0,
+"prompt": "a split image: half night with the moon, half day with the sun"
+},
+{
+"t": 4.5,
+"prompt": "the moon fading as daylight spreads"
+},
+{
+"t": 11,
+"prompt": "the bright sun lighting the whole land clearly"
+},
+{
+"t": 16,
+"prompt": "Arab farmers working in fields under the sun, modest clothes",
+"people": true
+}
+],
+"pollinating-winds": [
+{
+"t": 0,
+"prompt": "wind blowing through blossoming fruit trees"
+},
+{
+"t": 3,
+"prompt": "blossoms and pollen carried by the wind"
+},
+{
+"t": 7,
+"prompt": "wind gathering heavy rain clouds"
+},
+{
+"t": 12,
+"prompt": "rain falling from the clouds"
+},
+{
+"t": 15.5,
+"prompt": "camels and sheep drinking from a stream of rainwater"
+}
+],
+"harvest": [
+{
+"t": 0,
+"prompt": "an Arab farmer sowing seeds by hand in a plowed field at sunrise",
+"people": true
+},
+{
+"t": 5,
+"prompt": "green wheat sprouting in rows"
+},
+{
+"t": 12,
+"prompt": "a full green wheat field"
+},
+{
+"t": 16,
+"prompt": "the wheat field withered and broken into dry chaff"
+},
+{
+"t": 22,
+"prompt": "an Arab farmer standing in his ruined field, shocked and grieving, hands on his head",
+"people": true
+}
+],
+"birds-held": [
+{
+"t": 0,
+"prompt": "a flock of birds high in the blue sky"
+},
+{
+"t": 4,
+"prompt": "birds gliding with wings fully outspread"
+},
+{
+"t": 11,
+"prompt": "birds folding their wings against their bodies in flight"
+},
+{
+"t": 16,
+"prompt": "birds held aloft in the sky"
+}
+],
+"cattle": [
+{
+"t": 0,
+"prompt": "camels, cows, sheep and goats together in a pasture"
+},
+{
+"t": 4.5,
+"prompt": "close-up of thick sheep wool and camel hair"
+},
+{
+"t": 9,
+"prompt": "herds going out to pasture in the morning light"
+},
+{
+"t": 19.5,
+"prompt": "herds returning home at sunset, golden light"
+}
+]
+};
+for (const s of LIBRARY) if (SHOTS[s.id] && !s.shots) s.shots = SHOTS[s.id];

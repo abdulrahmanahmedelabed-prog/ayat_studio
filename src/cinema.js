@@ -12,6 +12,8 @@ export const STYLES = {
   anime: { name: 'سينمائي أنمي', suffix: 'anime feature film still, high quality 2D hand-drawn anime, cinematic composition, dramatic volumetric lighting, detailed painted background, expressive detailed faces, historical Arabian setting, film grain' },
 };
 // قيود ثابتة في كل وصف: لا ملائكة ولا أجنحة على بشر ولا هالات ولا شخصيات دينية، ولباس محتشم
+export const LOOKOPTS = { grain: true, letterbox: true, intensity: 'dramatic' };
+const INTENSE = { calm: 'calm peaceful atmosphere', dramatic: 'dramatic atmosphere', intense: 'intense dramatic action, raw emotion, storm and fire, battle tension, no blood, no gore, no wounds' };
 export const SAFE = 'no text, no wings on people, no angels, no halos, no religious figures, no prophets, ordinary humans only, modest traditional Arab clothing with long sleeves, women wearing hijab';
 const OVERLAY = ['rain', 'hail', 'lightning'];
 
@@ -74,7 +76,7 @@ const hash = (s) => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ 
 /** لقطات المشهد: واحدة لكل شرح (وأولها عند الصفر). */
 export function shotList(scene, style = 'real', key = '') {
   if (scene.shots?.length) // أوصاف مكتوبة يدويًا للمشهد
-    return scene.shots.map((sh, i, arr) => ({ t: sh.t, prompt: `${STYLES[style].suffix}, ${sh.prompt}. ${SAFE}, no people, no humans`, seed: hash(key + ':' + i + ':' + style), end: arr[i + 1]?.t ?? scene.duration }));
+    return scene.shots.map((sh, i, arr) => ({ t: sh.t, prompt: `${STYLES[style].suffix}, ${INTENSE[LOOKOPTS.intensity] || ''}, ${sh.prompt}. ${SAFE}${sh.people ? '' : ', no people, no humans'}`, seed: hash(key + ':' + i + ':' + style), end: arr[i + 1]?.t ?? scene.duration }));
   const times = [...new Set([0, ...scene.captions.map((c) => c.t)])].sort((a, b) => a - b);
   return times.map((t, i) => {
     // لا شخص في اللقطة: يُطلب صراحةً ألّا يظهر أحد (المولّد يضيف أشخاصًا من عنده أحيانًا)
@@ -83,7 +85,7 @@ export function shotList(scene, style = 'real', key = '') {
     const emo = scene.elements.some((e) => e.type === 'person' && live(e, t + 0.8) && ((e.moodAt != null && t + 0.8 >= e.moodAt ? e.mood2 : e.mood) || 'calm') !== 'calm');
     const frame = !people ? (i === 0 ? 'epic wide establishing shot' : ['wide shot', 'low-angle wide shot', 'aerial view'][i % 3])
       : emo ? 'cinematic close-up on the face showing strong emotion' : i === 0 ? 'wide establishing shot' : ['medium shot', 'over-the-shoulder shot', 'low-angle medium shot'][i % 3];
-    const prompt = `${STYLES[style].suffix}, ${frame}, ${describe(scene, t + 0.8)}${people ? '' : ', empty landscape, nobody'}. ${SAFE}${people ? '' : ', no people, no humans, no human figures'}`;
+    const prompt = `${STYLES[style].suffix}, ${INTENSE[LOOKOPTS.intensity] || ''}, ${frame}, ${describe(scene, t + 0.8)}${people ? '' : ', empty landscape, nobody'}. ${SAFE}${people ? '' : ', no people, no humans, no human figures'}`;
     return { t, prompt, seed: hash(key + ':' + i + ':' + style), end: times[i + 1] ?? scene.duration };
   });
 }
@@ -178,11 +180,11 @@ export class Cinema {
     // معالجة سينمائية: تدرّج لوني خفيف، حبيبات، تعتيم الأطراف، شريطان أسودان
     ctx.globalCompositeOperation = 'soft-light'; ctx.fillStyle = 'rgba(255,170,90,.18)'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over';
     const gt = grainTile(), ox = (t * 977) % 160, oy = (t * 613) % 160; ctx.globalAlpha = 0.6;
-    for (let x = -ox; x < W; x += 160) for (let y = -oy; y < H; y += 160) ctx.drawImage(gt, x, y);
+    if (LOOKOPTS.grain) for (let x = -ox; x < W; x += 160) for (let y = -oy; y < H; y += 160) ctx.drawImage(gt, x, y);
     ctx.globalAlpha = 1;
     const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.4, W / 2, H / 2, Math.max(W, H) * 0.75);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.5)'); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
-    const bar = Math.max(0, (H - W / 2.2) / 2); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, bar); ctx.fillRect(0, H - bar, W, bar);
+    const bar = LOOKOPTS.letterbox ? Math.max(0, (H - W / 2.2) / 2) : 0; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, bar); ctx.fillRect(0, H - bar, W, bar);
     ctx.restore();
   }
 }

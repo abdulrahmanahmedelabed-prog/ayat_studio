@@ -8,10 +8,12 @@ import { LIBRARY } from './scenes/library.js';
 import { POLICY, TYPE_NAMES, checkScene, STRICTNESS, DEFAULT_STRICTNESS, forLevel, OPENISH } from './agents/rules.js';
 import { Recitation, RECITERS, DEFAULT_RECITER } from './audio.js';
 import { Sfx } from './sfx.js';
-import { Cinema, STYLES, makeReviewer, shotList, pickShots } from './cinema.js';
+import { Cinema, STYLES, makeReviewer, shotList, pickShots, LOOKOPTS } from './cinema.js';
 import { getShots, saveShots, clearShots } from './myshots.js';
 import { APP_VERSION, autoCheck, checkUpdate, platform, skip } from './update.js';
-import { runOffline, runOfflineRange } from './agents/offline.js';
+import { WEB_TOOLS as WEBTOOLS } from './video.js';
+const V = import('./video.js');
+import { runOffline, runOfflineRange, INTENSITY } from './agents/offline.js';
 import { alignAyah, findPhrase } from './words.js';
 import { strip } from './agents/rules.js';
 
@@ -47,6 +49,25 @@ async function ayat(ref) {
 const level = () => (STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS);
 const reciteOn = () => store.get('recite', '1') === '1';
 const sfxOn = () => store.get('sfx', '1') === '1';
+// خيارات العرض العامة من الإعدادات
+// أوصاف لقطات مكتوبة بالوكلاء لكل آية (public/data/shots/<سورة>.json)
+const shotCache = {};
+async function curatedShots(s, from, to) {
+  try { shotCache[s] ??= fetch(`./data/shots/${s}.json`).then((r) => r.ok ? r.json() : null).catch(() => null); const d = await shotCache[s]; if (!d) return null;
+    const out = []; for (let a = from; a <= to; a++) for (const sh of d[a - 1]?.shots || []) out.push(sh); return out.length ? out : null; } catch { return null; }
+}
+async function withCurated(scene, ref) {
+  if (scene.shots?.length) return scene; const list = await curatedShots(ref.s, ref.from, ref.to); if (!list) return scene;
+  const step = scene.duration / list.length; scene.shots = list.slice(0, 8).map((sh, i) => ({ t: +(i * scene.duration / Math.min(8, list.length)).toFixed(2), prompt: sh.p, people: !!sh.people })); return scene;
+}
+
+function applyOptions() {
+  INTENSITY.value = LOOKOPTS.intensity = store.get('intensity', 'dramatic');
+  LOOKOPTS.grain = store.get('grain', '1') === '1'; LOOKOPTS.letterbox = store.get('letterbox', '1') === '1';
+  document.documentElement.dataset.cap = store.get('capsize', 'm');
+  document.documentElement.dataset.labels = store.get('labels', '1');
+}
+applyOptions();
 const GEMINI_DEFAULT = 'auto';
 const GEMINI_MODELS = [['auto', 'المتكيّف — يختار النموذج لكل وكيل (يُنصح به)'], ['gemini-flash-lite-latest', 'أحدث Flash-Lite (الأسرع)'], ['gemini-flash-latest', 'أحدث Flash (أدق)']];
 // مزوّد وكلاء الذكاء الاصطناعي: Gemini (مجاني) أو Claude (مدفوع). يُستعمل المختار إن كان له مفتاح.
@@ -152,6 +173,22 @@ function myShotsBlock(scene, key, seedKey) {
       h('button', { class: 'ghost', onclick: async () => { await clearShots(key); msg.textContent = 'حُذفت لقطاتك لهذا المشهد.'; } }, 'حذف لقطاتي')), msg);
 }
 
+function aiVideoBlock(scene, seedKey) {
+  const shots = pickShots(shotList(scene, 'real', seedKey), 4);
+  const msg = h('p', { class: 'saved', role: 'status' }), clips = h('div', { class: 'aiclips' });
+  const pick = h('select', { 'aria-label': 'اللقطة' }, shots.map((s, i) => h('option', { value: i }, `اللقطة ${AR(i + 1)}`)));
+  const prompt = () => V.then((m) => m.videoPrompt(shots[+pick.value].prompt.replace(/\. .*$/, '')));
+  const show = (url, label) => clips.append(h('figure', {}, h('video', { src: url, controls: true, playsinline: true, loop: true }), h('figcaption', {}, label, ' — ', h('a', { href: url, download: `mashhadaya-${seedKey.replace(/[^\w]+/g, '-')}.mp4` }, 'تنزيل'))));
+  const run = async (fn, label, btn) => { btn.disabled = true; try { show(await fn(await V, await prompt(), (t) => { msg.textContent = t; }), label); msg.textContent = 'جاهز. راجع المقطع قبل استعماله.'; } catch (e) { msg.textContent = e.message; } btn.disabled = false; };
+  const veoBtn = h('button', { class: 'primary', onclick: () => store.get('gkey') ? run((m, p, st) => m.veo(store.get('gkey'), p, st), 'Veo', veoBtn) : (msg.textContent = 'أدخل مفتاح Gemini في الإعدادات أولًا.') }, 'توليد بـ Veo (مفتاح Gemini)');
+  const locBtn = h('button', { class: 'ghost', onclick: () => store.get('comfywf') ? run((m, p, st) => m.comfy(store.get('comfyurl', 'http://127.0.0.1:8188'), store.get('comfywf'), p, st), 'محلي', locBtn) : (msg.textContent = 'اضبط النموذج المحلي (ComfyUI) في الإعدادات أولًا.') }, 'توليد محليًا (مفتوح المصدر)');
+  return h('details', { class: 'panel myshots' }, h('summary', {}, h('b', {}, 'فيديو بالذكاء الاصطناعي'), h('small', {}, ' — Veo وKling وPixVerse وغيرها، أو محليًا مجانًا')),
+    h('div', { class: 'actions-row' }, pick, veoBtn, locBtn),
+    h('p', { class: 'note' }, 'أو انسخ الوصف وافتح أداة لها رصيد مجاني بحسابك:'),
+    h('div', { class: 'actions-row' }, (WEBTOOLS).map((t) => h('button', { class: 'chipbtn', title: t.note, onclick: async () => { try { await navigator.clipboard.writeText(await prompt()); msg.textContent = `نُسخ الوصف — ألصقه في ${t.name}. (${t.note})`; } catch { msg.textContent = 'تعذّر النسخ.'; } window.open(t.url, '_blank', 'noopener'); } }, t.name))),
+    msg, clips);
+}
+
 function favButton(id) {
   const b = h('button', { class: 'fav', 'aria-pressed': String(isFav(id)), onclick: () => { const on = toggleFav(id); b.setAttribute('aria-pressed', String(on)); b.lastChild.textContent = on ? 'في المفضّلة' : 'أضف إلى المفضّلة'; } }, h('span', { 'aria-hidden': 'true' }, '♥'), h('span', {}, isFav(id) ? 'في المفضّلة' : 'أضف إلى المفضّلة'));
   return b;
@@ -188,7 +225,7 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
     const cin = new Cinema(scene, lookStyle(), cine || title, own || (cine && (man[cine]?.[lookStyle()] || man[cine]?.real)));
     if (own) cin.own = true;
     // الصور المولَّدة مباشرة قد تخالف الضوابط (رأينا ذلك في التجربة)، فلا تُعرض إلا بعد مراجعة Claude لكل صورة
-    if (!cin.local && !cin.own && !key) { cineStatus.textContent = `${sty}: لهذا المشهد لقطات لم تُراجَع بعد، فيُعرض بالرسوم. لتوليد لقطات سينمائية لأي آية أضف مفتاح Claude في الإعدادات ليراجع المراجعُ الشرعي كل صورة قبل عرضها.`; return; }
+    if (!cin.local && !cin.own && !key && store.get('unreviewed') !== '1') { cineStatus.textContent = `${sty}: لهذا المشهد لقطات لم تُراجَع بعد، فيُعرض بالرسوم. لتوليد لقطات سينمائية لأي آية أضف مفتاح Claude في الإعدادات ليراجع المراجعُ الشرعي كل صورة قبل عرضها.`; return; }
     p.cinema = cin;
     const swap = (c) => { p.render = c.draw.bind(c); p.recordable = c.recordable; p.draw(); };
     return cin.load((d, n, waiting) => { cineStatus.textContent = waiting ? `${sty}: ${AR(d)} من ${AR(n)} لقطات جاهزة · اللقطة التالية بعد ٤٦ ثانية (حدّ الخدمة المجانية)` : `${sty}: ${AR(d)} من ${AR(n)} لقطات…`; },
@@ -221,7 +258,9 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
   p.cleanup = () => { if (p.cinema) p.cinema.stopped = true; rc?.destroy(); sfx?.close(); p.dead = true; };
   bar.addEventListener('input', () => p.seek(+bar.value));
   playBtn.addEventListener('click', () => p.toggle());
-  const speed = h('button', { class: 'ghost', onclick: () => { p.speed = p.speed === 1 ? 0.5 : 1; rc?.setRate(p.speed); speed.textContent = p.speed === 1 ? 'سرعة ×١' : 'سرعة ×½'; } }, 'سرعة ×١');
+  const SPEEDS = [0.5, 0.75, 1, 1.25], spLabel = (v) => `سرعة ×${AR(String(v)).replace('.', '٫')}`;
+  p.speed = +store.get('speed', '1'); rc?.setRate(p.speed);
+  const speed = h('button', { class: 'ghost', onclick: () => { p.speed = SPEEDS[(SPEEDS.indexOf(p.speed) + 1) % SPEEDS.length]; rc?.setRate(p.speed); speed.textContent = spLabel(p.speed); } }, spLabel(p.speed));
   const wrap = h('div', { class: 'stagewrap' }, canvas, cap);
   const canRec = typeof MediaRecorder !== 'undefined' && !!canvas.captureStream && !/; wv\)/.test(navigator.userAgent);
   const rec = canRec ? h('button', { class: 'ghost', onclick: () => recordVideo(p, scene, title, rec, rc && audioOk ? rc : null, status, { ref: A.refText, verse: A.verse, reciter: rc ? RECITERS[reciter()].name : '' }) }, 'حفظ فيديو') : null;
@@ -231,7 +270,7 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
   return h('div', { class: 'player' },
     h('div', { class: 'col-stage' }, wrap, h('div', { class: 'controls' }, playBtn, bar, time, speed, full, rec),
       lookStyle() !== 'drawn' ? cineStatus : null, rc ? status : null, h('p', { class: 'note' }, 'المشهد وسيلة إيضاح للمعنى وليس تفسيرًا. المرجع هو التفسير أدناه وأهل العلم.')),
-    h('div', { class: 'col-text' }, h('div', { class: 'titlerow' }, h('h2', {}, title), favId ? favButton(favId) : null), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, translationBlock(A), tafsirBlock(A), myShotsBlock(scene, myKey, cine || title), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
+    h('div', { class: 'col-text' }, h('div', { class: 'titlerow' }, h('h2', {}, title), favId ? favButton(favId) : null), verse, scene.captions.some((c) => c.q) ? h('p', { class: 'note' }, 'تُظلَّل ألفاظ الآية المقابلة لكل لقطة أثناء العرض.') : null, translationBlock(A), tafsirBlock(A), myShotsBlock(scene, myKey, cine || title), aiVideoBlock(scene, cine || title), reportBlock(report, (t) => { p.seek(t); wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); })));
 }
 
 // يسجّل المشهد كاملًا فيديو WebM مع الشروح مرسومة عليه، ثم ينزّله.
@@ -239,7 +278,7 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
 // والصوت تلاوة القارئ ممزوجة بأصوات الطبيعة (تُخفَّض تحت التلاوة).
 async function recordVideo(p, scene, title, btn, rc, status, meta = {}) {
   if (btn.disabled) return;
-  const W = 1920, H = 1080, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const [W, H] = store.get('vq', '1080') === '720' ? [1280, 720] : [1920, 1080], cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d'), stream = cv.captureStream(30);
   const INTRO = 4, OUTRO = 3.5;
   const actx = new AudioContext(), mix = actx.createMediaStreamDestination();
@@ -387,7 +426,7 @@ async function pageStudio() {
         }
       }
       else res = await runOfflineRange(A.rows, strict, onStep);
-      if (res.ok) { res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report, ref })); }
+      if (res.ok) { await withCurated(res.scene, ref); res.report.timeline = res.scene.captions; out.replaceChildren(playerView({ title: A.refText, scene: res.scene, A, report: res.report, ref })); }
       else out.replaceChildren(h('div', { class: 'rejected' }, h('h2', {}, 'هذه الآية لا يُبنى لها مشهد'),
         h('p', {}, 'قرّر المراجع الشرعي أن تصويرها لا يصحّ. تُقرأ وتُفهم من التفسير:'), h('ul', {}, (res.report.review?.reasons || []).map((r) => h('li', {}, r))), verseBlock(A), tafsirBlock(A)));
       if (made) out.prepend(h('button', { class: 'hint', onclick: () => go('scene/' + made.id) }, 'لهذه الآية مشهد مُعدّ ومراجَع يدويًا في المكتبة ←'));
@@ -417,9 +456,30 @@ async function pageStudio() {
     h('div', { class: 'hero' }, h('h1', {}, 'الاستوديو'), h('p', {}, 'اختر آية، فيعمل عليها أربعة وكلاء بالتتابع: يجمع الأول معناها من التفسير، ويراجعها الثاني شرعًا قبل الرسم وبعده، ويرسم الثالث مشهدها، ويحرّكه الرابع.')),
     h('div', { class: 'search' }, q, hits),
     h('div', { class: 'form' }, h('label', {}, 'السورة', sel), h('label', {}, 'من الآية', from), h('label', {}, 'إلى', to), btn),
+    h('div', { class: 'surah-export' }, h('button', { class: 'ghost', id: 'surah-prompts', onclick: async (ev) => {
+      // أوصاف لقطات كل آيات السورة (لتوليدها في Gemini أو غيره)، تُبنى بالوكلاء دون اتصال
+      const btn = ev.currentTarget, s = +sel.value, ch = CH[s - 1], [Cl, Tf] = await Promise.all([load('clean'), load('tafsir')]);
+      btn.disabled = true; const lines = [`أوصاف لقطات سورة ${ch.name} — مَشهَدآية`, 'اطلب في Gemini: «ولّد صورة 16:9 لكل لقطة بالترتيب». راجع كل صورة قبل استعمالها.', ''];
+      const style = lookStyle() === 'drawn' ? 'anime' : lookStyle();
+      for (let a = 1; a <= ch.n; a++) {
+        btn.textContent = `الآية ${AR(a)} من ${AR(ch.n)}…`;
+        const r = await runOffline({ clean: Cl[s - 1][a - 1], tafsir: Tf[s - 1][a - 1], strictness: STRICTNESS[store.get('strict')] ? store.get('strict') : DEFAULT_STRICTNESS }, () => {}); // «level» محجوب في هذه الدالة باسم متغيّر
+        if (!r.ok) { lines.push(`﴿${a}﴾ — لا تُصوَّر في الدرجة الحالية`, ''); continue; }
+        await withCurated(r.scene, { s, from: a, to: a });
+        pickShots(shotList(r.scene, style, `${s}:${a}`), 3).forEach((sh, i) => lines.push(`﴿${a}﴾ اللقطة ${i + 1}:`, sh.prompt, ''));
+      }
+      const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })), link = document.createElement('a');
+      link.href = url; link.download = `mashhadaya-${s}-prompts.txt`; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+      btn.disabled = false; btn.textContent = 'أوصاف لقطات السورة كلها';
+    } }, 'أوصاف لقطات السورة كلها'), h('small', {}, 'ملف نصي بأوصاف لقطات كل آيات السورة المختارة، لتوليد صورها في تطبيق Gemini ثم استيرادها في «لقطاتك الخاصة».')),
     h('div', { class: 'tries' }, 'جرّب: ', tries.map(([s, a, t]) => h('button', { class: 'chipbtn', onclick: () => { sel.value = s; from.value = to.value = a; run(); } }, `${t} (${CH[s - 1].name} ${AR(a)})`))),
     mode, steps, out));
   fix();
+}
+
+function optSelect(key, label, options, def) {
+  const sel = h('select', { id: 'opt-' + key, onchange: () => { store.set(key, sel.value); applyOptions(); } }, options.map(([v, t]) => h('option', { value: v, selected: store.get(key, def) === v }, t)));
+  return h('label', {}, label, sel);
 }
 
 function pageAbout() {
@@ -454,8 +514,20 @@ function pageAbout() {
       h('p', { class: 'src' }, 'هذه الضوابط مبنية في المحرّك: لا يملك عناصر للغيب، والشخصيات العامة تُحذف آليًا خارج درجة «متساهل»، ثم يُفحص كل مشهد قبل عرضه. ومع ذلك فالتطبيق جهد بشري وآلي يحتمل الخطأ، ويُستحسن عرض المشاهد المولَّدة على طالب علم قبل نشرها أو تعليمها.')),
     h('section', { class: 'panel' }, h('h3', {}, 'أسلوب العرض'),
       h('p', {}, 'السينمائي يولّد لكل لقطة صورة بالذكاء الاصطناعي مجانًا (خدمة Pollinations، تحتاج إنترنت وتضع علامتها في زاوية الصورة)، ثم يحرّكها بحركة كاميرا ومؤثرات. يظهر في العرض فقط، أما الفيديو المحفوظ فيُسجَّل بالرسوم. الوصف يُبنى من عناصر المشهد لا من نص الآية، ويمنع دائمًا الملائكة والأجنحة على البشر والهالات والشخصيات الدينية. المشاهد التي لها لقطات مُعدّة ومراجَعة تعمل فورًا ودون إنترنت. ولتوليد لقطات لأي آية أخرى يلزم مفتاح Claude، ليفحص المراجع الشرعي كل صورة قبل عرضها، لأن الخدمة المجانية قد تُخرج صورًا مخالفة.'),
+      h('label', { class: 'check warn' }, h('input', { type: 'checkbox', id: 'unreviewed', checked: store.get('unreviewed') === '1', onchange: (ev) => { store.set('unreviewed', ev.target.checked ? '1' : ''); lookMsg.textContent = ev.target.checked ? 'سيُعرض التوليد المباشر دون مراجعة.' : 'أُطفئ.'; } }),
+        'عرض اللقطات المولَّدة مباشرة دون مراجعة Claude (على مسؤوليتك: الخدمة المجانية أخرجت في التجارب صورًا غير محتشمة وشخصًا بجناحين)'),
       h('div', { class: 'levels', role: 'radiogroup', 'aria-label': 'أسلوب العرض' }, [['real', 'سينمائي واقعي', 'صور تشبه التصوير الحقيقي.'], ['anime', 'سينمائي أنمي', 'صور بأسلوب أفلام الأنمي المرسومة.'], ['drawn', 'رسوم التطبيق', 'الرسوم المتحركة المبنية في التطبيق. تعمل دون إنترنت وتظهر فيها الأقوال والانفعالات كاملة.']].map(([id, name, desc]) =>
         h('label', { class: 'level' }, h('input', { type: 'radio', name: 'look', id: 'look-' + id, value: id, checked: lookStyle() === id, onchange: () => { store.set('look', id); lookMsg.textContent = 'حُفظ: ' + name; } }), h('span', {}, h('b', {}, name), h('small', {}, desc))))), lookMsg),
+    h('section', { class: 'panel' }, h('h3', {}, 'خيارات العرض'),
+      h('div', { class: 'opts' },
+        optSelect('intensity', 'شدة المشاهد', [['calm', 'هادئ — بلا صراع'], ['dramatic', 'درامي (الافتراضي)'], ['intense', 'عنيف — قتال وعواصف وفزع، بلا دم ولا إصابات']], 'dramatic'),
+        optSelect('capsize', 'حجم خط الشرح', [['s', 'صغير'], ['m', 'متوسط'], ['l', 'كبير']], 'm'),
+        optSelect('speed', 'سرعة العرض الافتراضية', [['0.5', '×٠٫٥'], ['0.75', '×٠٫٧٥'], ['1', '×١'], ['1.25', '×١٫٢٥']], '1'),
+        optSelect('vq', 'دقة الفيديو المحفوظ', [['1080', '1080p (أعلى جودة)'], ['720', '720p (ملف أصغر)']], '1080'),
+        optSelect('labels', 'الأسماء التوضيحية داخل المشهد', [['1', 'إظهار'], ['0', 'إخفاء']], '1'),
+        optSelect('grain', 'حبيبات الفيلم في السينمائي', [['1', 'تشغيل'], ['0', 'إيقاف']], '1'),
+        optSelect('letterbox', 'الشريطان الأسودان في السينمائي', [['1', 'تشغيل'], ['0', 'إيقاف']], '1')),
+      h('p', { class: 'src' }, 'شدة «عنيف» تعني صراعًا وحركة وانفعالًا قويًا؛ ولا تُرسم الدماء والجروح والأشلاء في أي درجة.')),
     h('section', { class: 'panel' }, h('h3', {}, 'الترجمة'),
       h('p', {}, 'تظهر ترجمة معاني الآية تحت نصّها، لمن لا يحسن العربية. الترجمات من QuranEnc.com كما هي دون تعديل، وتعمل دون إنترنت.'),
       h('div', { class: 'form' }, h('label', {}, 'لغة الترجمة', h('select', { id: 'lang', onchange: (ev) => { store.set('lang', ev.target.value); trMsg.textContent = 'حُفظ.'; } },
@@ -480,6 +552,10 @@ function pageAbout() {
       h('div', { class: 'form' }, h('label', {}, 'مفتاح Anthropic API', key), h('label', {}, 'النموذج', model),
         h('button', { class: 'primary', onclick: () => { store.set('key', key.value.trim()); store.set('model', model.value); msg.textContent = key.value.trim() ? 'حُفظ مفتاح Claude.' : 'حُذف مفتاح Claude.'; } }, 'حفظ'),
         h('button', { class: 'ghost', onclick: () => { key.value = ''; store.set('key', ''); msg.textContent = 'حُذف مفتاح Claude.'; } }, 'حذف المفتاح')), msg),
+    h('section', { class: 'panel' }, h('h3', {}, 'فيديو بالذكاء الاصطناعي'),
+      h('p', {}, 'Veo يعمل بمفتاح Gemini أعلاه إن أتاحه حسابك. وللبديل المجاني بلا حدود: شغّل ComfyUI على جهازك مع نموذج فيديو مفتوح المصدر (Wan 2.x أو LTX-Video أو HunyuanVideo)، وصدّر سير العمل بصيغة API، وضع {{PROMPT}} مكان نص الوصف، ثم الصقه هنا. شغّل ComfyUI بالخيار --enable-cors-header.'),
+      h('div', { class: 'form' }, h('label', {}, 'عنوان ComfyUI', h('input', { id: 'comfyurl', dir: 'ltr', value: store.get('comfyurl', 'http://127.0.0.1:8188'), onchange: (ev) => store.set('comfyurl', ev.target.value.trim()) })),
+        h('label', {}, 'سير العمل (JSON بصيغة API)', h('textarea', { id: 'comfywf', dir: 'ltr', rows: 4, placeholder: '{"6":{"inputs":{"text":"{{PROMPT}}"...', onchange: (ev) => { try { if (ev.target.value.trim()) JSON.parse(ev.target.value); store.set('comfywf', ev.target.value); ev.target.setCustomValidity(''); } catch { ev.target.setCustomValidity('JSON غير صالح'); ev.target.reportValidity(); } } }, store.get('comfywf'))))),
     h('section', { class: 'panel' }, h('h3', {}, 'التحديثات'),
       h('p', {}, `الإصدار الحالي: ${AR(APP_VERSION).replace(/\./g, '٫')}. ` + (platform() === 'web' ? 'نسخة الموقع تتحدّث تلقائيًا.' : 'يفحص التطبيق عند فتحه هل صدرت نسخة أحدث، ويُظهر تنبيهًا فيه زر التنزيل.')),
       h('div', { class: 'form' }, h('button', { class: 'ghost', id: 'check-update', onclick: async () => {
