@@ -4,7 +4,18 @@ import fs from 'node:fs';
 import * as ResEdit from 'resedit';
 
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-execFileSync('npx', ['electron-builder', '--win', 'dir', '--x64', '-c.win.signAndEditExecutable=false'], { stdio: 'inherit' });
+// ffmpeg لويندوز (للتحويل إلى MP4): نسخة ffmpeg-static المثبّتة هنا خاصة بنظام البناء، فنضع نسخة win32 مؤقتًا
+const ffDir = 'node_modules/ffmpeg-static', keep = `${ffDir}/.host-ffmpeg`;
+const hostBin = fs.existsSync(`${ffDir}/ffmpeg`) ? `${ffDir}/ffmpeg` : null;
+if (process.platform !== 'win32') {
+  if (hostBin) fs.renameSync(hostBin, keep);
+  execFileSync('node', ['install.js'], { cwd: ffDir, stdio: 'inherit', env: { ...process.env, npm_config_platform: 'win32', npm_config_arch: 'x64', CI: '' } });
+}
+try {
+  execFileSync('npx', ['electron-builder', '--win', 'dir', '--x64', '-c.win.signAndEditExecutable=false'], { stdio: 'inherit' });
+} finally {
+  if (process.platform !== 'win32') { fs.rmSync(`${ffDir}/ffmpeg.exe`, { force: true }); if (fs.existsSync(keep)) fs.renameSync(keep, `${ffDir}/ffmpeg`); }
+}
 const exePath = `release/win-unpacked/${pkg.build.productName}.exe`;
 const exe = ResEdit.NtExecutable.from(fs.readFileSync(exePath), { ignoreCert: true });
 const res = ResEdit.NtExecutableResource.from(exe);

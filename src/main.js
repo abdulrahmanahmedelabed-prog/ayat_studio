@@ -243,6 +243,7 @@ async function recordVideo(p, scene, title, btn, rc, status, meta = {}) {
   const ctx = cv.getContext('2d'), stream = cv.captureStream(30);
   const INTRO = 4, OUTRO = 3.5;
   const actx = new AudioContext(), mix = actx.createMediaStreamDestination();
+  await actx.resume().catch(() => {});
   let total = scene.duration, src = null;
   if (rc) {
     btn.disabled = true; btn.textContent = 'تحضير التلاوة…';
@@ -253,7 +254,8 @@ async function recordVideo(p, scene, title, btn, rc, status, meta = {}) {
   const sfx = sfxOn() ? new Sfx() : null;
   if (sfx) { sfx.start(actx, mix); sfx.duck(!!src); }
   if (src || sfx) stream.addTrack(mix.stream.getAudioTracks()[0]);
-  const type = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find((t) => MediaRecorder.isTypeSupported(t));
+  // MP4 قياسي (H.264/AAC) إن دعمه المتصفح، ليعمل الصوت في كل مكان؛ وإلا WebM (ويحوّله تطبيق ويندوز إلى MP4)
+  const type = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.4d002a,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find((t) => MediaRecorder.isTypeSupported(t));
   if (!type) { btn.textContent = 'التسجيل غير مدعوم'; actx.close(); return; }
   const mr = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 10e6 }), chunks = [];
   mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
@@ -304,7 +306,7 @@ async function recordVideo(p, scene, title, btn, rc, status, meta = {}) {
   });
   mr.stop(); await done; sfx?.close(); if (actx.state !== 'closed') actx.close();
   const blob = new Blob(chunks, { type }), a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `${title.replace(/[\\/:*?"<>|]/g, '')}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
+  a.href = URL.createObjectURL(blob); a.download = `mashhadaya-${(meta.ref || title).replace(/[^\u0600-\u06FFa-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '')}.${type.includes('mp4') ? 'mp4' : 'webm'}`; // اسم بامتداد صريح
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   btn.textContent = label; btn.disabled = false;
 }

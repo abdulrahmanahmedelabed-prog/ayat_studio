@@ -1,6 +1,6 @@
 {
   "name": "mashhadaya",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "description": "مَشهَدآية — استوديو الآيات القرآنية: يحوّل معنى الآية إلى مشهد متحرك يُفهم بالنظر",
   "author": "Mashhadaya",
   "license": "MIT",
@@ -25,7 +25,8 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "node_modules/ffmpeg-static/**"
     ],
     "win": {
       "target": [
@@ -46,7 +47,10 @@
       "ar",
       "en-US"
     ],
-    "asar": true
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**"
+    ]
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^1.10.0",
@@ -61,5 +65,8 @@
     "type": "git",
     "url": "https://github.com/abdulrahmanahmedelabed-prog/ayat_studio.git"
   },
-  "releaseNotes": "فيديو احترافي 1080p ببطاقتي افتتاح وختام وأصوات الطبيعة، و«لقطاتك الخاصة» لاستيراد صور تولّدها بتطبيق Gemini."
+  "releaseNotes": "الفيديو المحفوظ بصيغة MP4 القياسية ليعمل صوته في الهاتف وواتساب وويندوز.",
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0"
+  }
 }
