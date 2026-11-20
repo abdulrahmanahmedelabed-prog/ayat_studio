@@ -13,6 +13,7 @@ const dim = (e, hex, k = 0.55) => shade(hex, 1 - (1 - e.light) * k);
 const LOOKS = {
   boy: { skin: '#f3c9a4', hair: '#2b1d16', top: '#3f7fbf', bottom: '#2c3e50', head: 'hair' },
   girl: { skin: '#f6d2b4', hair: '#2b1d16', top: '#c0587e', bottom: '#7a3a5c', head: 'scarf', scarf: '#e9e1f0' },
+  king: { skin: '#d9a77f', hair: '#1f1612', top: '#8e1e2c', bottom: '#5c1420', head: 'hair', beard: true, crown: true },
   man: { skin: '#d9a77f', hair: '#1f1612', top: '#efe9dc', bottom: '#d9cfbb', head: 'shemagh', scarf: '#e8e2d6', band: '#2a2a2a', beard: true },
   woman: { skin: '#e8b892', hair: '#1f1612', top: '#4b6c8f', bottom: '#2f455d', head: 'scarf', scarf: '#2f4f6a' },
   farmer: { skin: '#c99068', hair: '#2b1d16', top: '#8a6a3a', bottom: '#5b4526', head: 'hat', hat: '#d8b45c' },
@@ -36,6 +37,7 @@ export function person(c, e, el, k, a) {
   const shake = mood === 'afraid' ? Math.sin(e.t * 47) * H * 0.008 : line?.style === 'shout' ? Math.sin(e.t * 31) * H * 0.005 : 0;
   const hop = mood === 'happy' ? Math.abs(Math.sin(e.t * 4.5)) * H * 0.03 : mood === 'surprised' && el.moodAt != null ? Math.max(0, 1 - (e.t - el.moodAt) * 3) * H * 0.08 : 0;
   c.save(); c.translate(x + shake, gy); c.globalAlpha = a;
+  if (el.pose === 'sleep') { c.translate(-H * 0.2, -H * 0.06); c.rotate(-Math.PI / 2 + 0.05); c.translate(0, H * 0.3); } // مستلقٍ نائم
   if ((el.facing ?? (el.x1 != null && el.x0 != null && el.x1 < el.x0 ? -1 : 1)) < 0) c.scale(-1, 1);
   c.fillStyle = 'rgba(0,0,0,.22)'; ell(c, 0, 0, H * 0.18, H * 0.035);
   c.translate(0, -bob - hop);
@@ -77,6 +79,9 @@ export function person(c, e, el, k, a) {
     c.strokeStyle = dim(e, '#5a3a1e'); c.lineWidth = H * 0.018; c.beginPath(); c.moveTo(hand[0], hand[1]);
     c.quadraticCurveTo(hand[0] + H * lerp(0.25, -0.05, up), hand[1] + H * lerp(0.05, -0.25, up), hand[0] + H * lerp(0.42, 0.1, up), hand[1] + H * lerp(0.3, -0.3, up)); c.stroke(); }
   else if (pose === 'bowed') { arm(-1, 0.9, 1.6); arm(1, 0.9, 1.6); }
+  else if (pose === 'read') { arm(-1, 0.35, -1.5); hand = arm(1, 0.35, -1.5); c.fillStyle = dim(e, '#f4ecd6'); c.fillRect(-H * 0.11, hand[1] - H * 0.09, H * 0.22, H * 0.12); c.strokeStyle = dim(e, '#8a6a3a'); c.lineWidth = H * 0.008; c.strokeRect(-H * 0.11, hand[1] - H * 0.09, H * 0.22, H * 0.12); c.beginPath(); c.moveTo(0, hand[1] - H * 0.09); c.lineTo(0, hand[1] + H * 0.03); c.stroke(); }
+  else if (pose === 'eat') { arm(-1, 0.3); const up = (Math.sin(e.t * 2.5 + (el.seed || 0)) + 1) / 2; hand = arm(1, lerp(1.2, 2.5, up), lerp(0.4, -0.9, up)); c.fillStyle = dim(e, '#c98a3a'); ell(c, hand[0], hand[1], H * 0.035, H * 0.025); }
+  else if (pose === 'proud') { arm(-1, 0.6, 1.5); arm(1, 0.6, 1.5); }
   else if (mood === 'afraid') { arm(-1, 2.25, -1.5); arm(1, 2.25, -1.5); }
   else if (mood === 'surprised') { arm(-1, 1.75, -0.5); arm(1, 1.75, -0.5); }
   else if (mood === 'angry') { arm(-1, 0.55, 1.1); arm(1, 0.55, 1.1); }
@@ -86,7 +91,7 @@ export function person(c, e, el, k, a) {
   else if (line) { arm(-1, 0.18); arm(1, 0.9 + talk * 0.4, -0.4); }
   else { arm(-1, 0.18); arm(1, 0.18); }
   // الرأس
-  const hy = bodyTop - H * 0.15, R = H * 0.16, tilt = pose === 'bowed' ? 0.38 : mood === 'sad' ? 0.24 : mood === 'angry' ? 0.08 : pose === 'lookup' || pose === 'cheer' ? -0.18 : pose === 'thirsty' ? 0.12 : 0;
+  const hy = bodyTop - H * 0.15, R = H * 0.16, tilt = pose === 'bowed' ? 0.38 : pose === 'proud' ? -0.22 : pose === 'read' ? 0.18 : mood === 'sad' ? 0.24 : mood === 'angry' ? 0.08 : pose === 'lookup' || pose === 'cheer' ? -0.18 : pose === 'thirsty' ? 0.12 : 0;
   c.save(); c.translate(0, hy); c.rotate(tilt);
   if (L.head === 'hair') { c.fillStyle = dim(e, L.hair); circle(c, -R * 0.08, -R * 0.08, R * 1.08); }
   if (L.head === 'scarf') { c.fillStyle = dim(e, L.scarf); c.beginPath(); c.ellipse(0, R * 0.05, R * 1.22, R * 1.28, 0, 0, 2 * PI); c.fill(); c.beginPath(); c.moveTo(-R * 1.1, R * 0.4); c.quadraticCurveTo(0, R * 2.1, R * 1.1, R * 0.4); c.fill(); }
@@ -101,8 +106,9 @@ export function person(c, e, el, k, a) {
     c.strokeStyle = dim(e, L.band); c.lineWidth = R * 0.16; c.beginPath(); c.ellipse(0, -R * 0.62, R * 0.98, R * 0.24, 0, PI, 2 * PI); c.stroke(); }
   if (L.head === 'hat') { c.fillStyle = dim(e, L.hair); circle(c, 0, -R * 0.15, R * 1.0); c.fillStyle = dim(e, L.skin); circle(c, 0, R * 0.05, R * 0.93);
     c.fillStyle = dim(e, L.hat); ell(c, 0, -R * 0.62, R * 1.6, R * 0.28); c.beginPath(); c.ellipse(0, -R * 0.7, R * 0.82, R * 0.6, 0, PI, 2 * PI); c.fill(); }
+  if (L.crown) { c.fillStyle = dim(e, '#e6c25f'); c.beginPath(); c.moveTo(-R * 0.75, -R * 0.55); for (let i = 0; i <= 4; i++) { c.lineTo(-R * 0.75 + i * R * 0.375, -R * (i % 2 ? 0.75 : 1.25)); } c.lineTo(R * 0.75, -R * 0.55); c.closePath(); c.fill(); }
   // الوجه: عينان واسعتان بلمعة
-  const look = pose === 'lookup' || pose === 'cheer' ? -R * 0.12 : 0, blink = (e.t + (el.seed || 0)) % 4 < 0.12;
+  const look = pose === 'lookup' || pose === 'cheer' ? -R * 0.12 : 0, blink = el.pose === 'sleep' || (e.t + (el.seed || 0)) % 4 < 0.12;
   for (const s of [-1, 1]) {
     const ex = s * R * 0.38 + R * 0.1, ey = R * 0.12;
     if (blink) { c.strokeStyle = '#2a1a14'; c.lineWidth = R * 0.08; c.beginPath(); c.moveTo(ex - R * 0.16, ey); c.lineTo(ex + R * 0.16, ey); c.stroke(); continue; }

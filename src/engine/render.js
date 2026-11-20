@@ -529,6 +529,28 @@ Object.assign(DRAW, {
     c.fillStyle = rgba('#b39b7a', 0.35 * a);
     for (let i = 0; i < 40; i++) { const x = r() * e.W, ph = r(), u = (ph + e.t * 0.2) % 1; circle(c, x + Math.sin(e.t + i) * e.U * 0.02, e.hz - u * e.U * 0.3, e.U * (0.02 + r() * 0.03) * (1 - u)); }
   },
+  idols(c, e, el, k, a) { // أصنام حجرية
+    const n = el.count || 3;
+    for (let i = 0; i < n; i++) {
+      const x = ((el.x ?? 0.5) + (i - (n - 1) / 2) * 0.1) * e.W, base = e.gy(x) + e.U * 0.01, S = e.U * 0.13 * (i === (n - 1) / 2 ? 1.3 : 1);
+      c.globalAlpha = a; c.fillStyle = lit('#8d8a84', e); c.fillRect(x - S * 0.3, base - S * 0.15, S * 0.6, S * 0.15);
+      c.fillStyle = lit('#a39f98', e); c.fillRect(x - S * 0.22, base - S * 1.1, S * 0.44, S * 0.95); circle(c, x, base - S * 1.25, S * 0.2);
+      c.fillStyle = lit('#6b6862', e); c.fillRect(x - S * 0.1, base - S * 1.3, S * 0.05, S * 0.04); c.fillRect(x + S * 0.05, base - S * 1.3, S * 0.05, S * 0.04);
+    }
+  },
+  house(c, e, el, k, a) { // بيت طيني بسيط، يُبنى من الأسفل
+    const x = (el.x ?? 0.5) * e.W, base = e.gy(x) + e.U * 0.01, S = e.U * 0.22 * (el.size || 1), up = ease(k), h = S * 0.8 * up;
+    c.globalAlpha = a; c.fillStyle = lit('#c8a272', e); c.fillRect(x - S * 0.6, base - h, S * 1.2, h);
+    c.fillStyle = lit('#a9845a', e); c.fillRect(x - S * 0.66, base - h - S * 0.07 * up, S * 1.32, S * 0.08 * up);
+    if (up > 0.6) { c.fillStyle = lit('#5a3a1e', e); c.fillRect(x - S * 0.12, base - S * 0.42, S * 0.24, S * 0.42); c.fillStyle = lit('#3a2a1a', e); c.fillRect(x + S * 0.28, base - S * 0.6, S * 0.16, S * 0.14); c.fillRect(x - S * 0.44, base - S * 0.6, S * 0.16, S * 0.14); }
+  },
+  stall(c, e, el, k, a) { // دكان في السوق بمظلة وبضاعة
+    const x = (el.x ?? 0.5) * e.W, base = e.gy(x) + e.U * 0.01, S = e.U * 0.24 * (el.size || 1);
+    c.globalAlpha = a; c.fillStyle = lit('#7a5530', e); c.fillRect(x - S * 0.55, base - S * 0.35, S * 1.1, S * 0.35); c.fillRect(x - S * 0.55, base - S * 0.95, S * 0.05, S * 0.95); c.fillRect(x + S * 0.5, base - S * 0.95, S * 0.05, S * 0.95);
+    for (let i = 0; i < 6; i++) { c.fillStyle = lit(i % 2 ? '#d8443a' : '#f2ece0', e); c.beginPath(); c.moveTo(x - S * 0.65 + i * S * 0.22, base - S * 0.95); c.lineTo(x - S * 0.43 + i * S * 0.22, base - S * 0.95); c.lineTo(x - S * 0.43 + i * S * 0.22, base - S * 0.8); c.quadraticCurveTo(x - S * 0.54 + i * S * 0.22, base - S * 0.72, x - S * 0.65 + i * S * 0.22, base - S * 0.8); c.closePath(); c.fill(); }
+    const cols = ['#e2552f', '#f0a531', '#7a3b8c', '#5fa644'];
+    for (let i = 0; i < 12; i++) { c.fillStyle = lit(cols[i % 4], e, 0.5); circle(c, x - S * 0.45 + (i % 6) * S * 0.18, base - S * 0.4 - Math.floor(i / 6) * S * 0.07, S * 0.05); }
+  },
   scroll(c, e, el, k, a) {
     const x = (el.x ?? 0.5) * e.W, y = (el.y ?? 0.42) * e.H, S = e.U * 0.3 * (el.size || 1), open = ease(k);
     c.globalAlpha = a; c.fillStyle = lit('#f1e4c4', e, 0.4); c.fillRect(x - S * 0.4 * open, y - S * 0.35, S * 0.8 * open, S * 0.7);
