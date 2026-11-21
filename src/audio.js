@@ -22,20 +22,22 @@ export class Recitation {
     for (let a = ref.from; a <= ref.to; a++) this.items.push({ urls: ayahUrls(ref.s, a, reciter), dur: 0 });
     this.i = 0; this.rate = 1; this.playing = false; this.onend = null;
   }
-  load(timeout = 12000) {
+  load(timeout = 15000) {
+    // لكل آية: يجرّب المصدر الأول، وإن تأخّر أو فشل انتقل إلى الاحتياطي، ثم يعيد المحاولة مرة
     return (this.ready ||= Promise.all(this.items.map((it) => new Promise((ok, bad) => {
-      let u = 0; const el = new Audio(); el.preload = 'auto';
-      const tmr = setTimeout(() => bad(new Error('timeout')), timeout);
-      el.addEventListener('loadedmetadata', () => { clearTimeout(tmr); it.dur = el.duration || 0; ok(); }, { once: true });
-      el.addEventListener('error', () => { if (++u < it.urls.length) el.src = it.urls[u]; else { clearTimeout(tmr); bad(new Error('audio')); } });
+      const tries = [...it.urls, ...it.urls]; let u = -1, tmr = null, done = false;
+      const el = new Audio(); el.preload = 'auto'; it.el = el;
+      const next = () => {
+        clearTimeout(tmr); if (done) return;
+        if (++u >= tries.length) { done = true; return bad(new Error('audio')); }
+        tmr = setTimeout(next, timeout); el.src = tries[u]; el.load();
+      };
+      el.addEventListener('loadedmetadata', () => { if (done) return; done = true; clearTimeout(tmr); it.dur = el.duration || 0; ok(); });
+      el.addEventListener('error', () => next());
       el.addEventListener('ended', () => this.next());
-      el.src = it.urls[0]; it.el = el;
-    }))).then(() => { this.total = this.items.reduce((s, x) => s + x.dur, 0); if (!this.total) throw new Error('empty'); return this; }));
-  }
-  get progress() { // 0..1 من مجموع التلاوة
-    if (!this.total) return 0;
-    let t = 0; for (let j = 0; j < this.i; j++) t += this.items[j].dur;
-    return Math.min(1, (t + (this.items[this.i]?.el.currentTime || 0)) / this.total);
+      next();
+    }))).then(() => { this.total = this.items.reduce((s, x) => s + x.dur, 0); if (!this.total) throw new Error('empty'); return this; })
+      .catch((e) => { this.ready = null; throw e; })); // يسمح بإعادة المحاولة
   }
   get time() { let t = 0; for (let j = 0; j < this.i; j++) t += this.items[j].dur; return t + (this.items[this.i]?.el.currentTime || 0); }
   seekTime(t) { if (this.total) this.seekFrac(t / this.total); }

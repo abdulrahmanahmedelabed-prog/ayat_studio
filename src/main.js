@@ -247,8 +247,9 @@ function playerView({ title, scene, A, report, ref, favId, cine }) {
   const toAudio = (t) => sync ? sync.toAudio(t) : (t / scene.duration) * rc.total, toScene = (a) => sync ? sync.toScene(a) : (a / rc.total) * scene.duration;
   if (rc) {
     status.textContent = `التلاوة: ${RECITERS[reciter()].name} — جارٍ التحميل…`;
-    rc.load().then(() => { sync = A?.rows ? buildSync(scene, A.rows.map((r) => r.clean), rc.items.map((x) => x.dur)) : null; status.textContent = `التلاوة: ${RECITERS[reciter()].name}` + (sync?.anchors > 2 ? ' · متزامنة مع ألفاظ الآية' : ''); if (p.playing) { rc.seekTime(toAudio(p.t)); rc.play().catch(blocked); } })
-      .catch(() => { audioOk = false; status.textContent = 'تعذّر تحميل التلاوة (تحتاج اتصالًا بالإنترنت). يعمل المشهد دون صوت.'; });
+    const loadRc = () => rc.load().then(() => { sync = A?.rows ? buildSync(scene, A.rows.map((r) => r.clean), rc.items.map((x) => x.dur)) : null; status.textContent = `التلاوة: ${RECITERS[reciter()].name}` + (sync?.anchors > 2 ? ' · متزامنة مع ألفاظ الآية' : ''); if (p.playing) { rc.seekTime(toAudio(p.t)); rc.play().catch(blocked); } })
+      .catch(() => { audioOk = false; status.replaceChildren('تعذّر تحميل التلاوة. ', h('button', { class: 'chipbtn', onclick: () => { status.textContent = 'إعادة تحميل التلاوة…'; audioOk = true; loadRc(); } }, 'إعادة المحاولة')); });
+    loadRc();
     rc.onend = () => { p.seek(scene.duration); p.pause(); };
   }
   function blocked() { p.pause(); status.textContent = 'اضغط زر التشغيل لسماع التلاوة مع المشهد.'; }
